@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Model tests against a real DB (no mocks): creation, str/url/color, the (listener, order)
 uniqueness constraint, CASCADE from the listener, and PROTECT on the target pool. Real
-netbox_load_balancing Listener + VirtualIPPool instances back every routing rule."""
+netbox_load_balancing Listener + Pool instances back every routing rule."""
 
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.db.utils import IntegrityError
 from django.test import TestCase
-from netbox_load_balancing.models import LBService, Listener, VirtualIPPool
+from netbox_load_balancing.models import LBService, Listener, Pool
 from netbox_load_balancing_acl.choices import LBRoutingMatchTypeChoices
 from netbox_load_balancing_acl.models import LBRoutingRule
 
@@ -18,7 +18,7 @@ def make_listener(name="fe"):
 
 
 def make_pool(name="pool"):
-    return VirtualIPPool.objects.create(name=name)
+    return Pool.objects.create(name=name)
 
 
 class LBRoutingRuleModelTest(TestCase):

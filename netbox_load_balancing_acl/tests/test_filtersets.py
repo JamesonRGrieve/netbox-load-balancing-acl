@@ -2,7 +2,7 @@
 """FilterSet tests against a real DB (no mocks): listener / target-pool scoping + choice filters."""
 
 from django.test import TestCase
-from netbox_load_balancing.models import LBService, Listener, VirtualIPPool
+from netbox_load_balancing.models import LBService, Listener, Pool
 from netbox_load_balancing_acl.choices import LBRoutingMatchTypeChoices
 from netbox_load_balancing_acl.filtersets import LBRoutingRuleFilterSet
 from netbox_load_balancing_acl.models import LBRoutingRule
@@ -20,8 +20,8 @@ class LBRoutingRuleFilterSetTest(TestCase):
     def setUpTestData(cls):
         cls.l1 = _listener("fe1")
         cls.l2 = _listener("fe2")
-        cls.p1 = VirtualIPPool.objects.create(name="pool1")
-        cls.p2 = VirtualIPPool.objects.create(name="pool2")
+        cls.p1 = Pool.objects.create(name="pool1")
+        cls.p2 = Pool.objects.create(name="pool2")
         LBRoutingRule.objects.create(
             listener=cls.l1,
             match_type=LBRoutingMatchTypeChoices.HOST,

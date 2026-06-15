@@ -3,16 +3,16 @@
 ``netbox_load_balancing`` plugin is missing — **host / SNI / path → backend-pool
 routing rules** (HAProxy ACLs).
 
-``netbox_load_balancing`` models the listener (frontend) and the backend ``VirtualIPPool``,
+``netbox_load_balancing`` models the listener (frontend) and the backend ``Pool``,
 but has no native way to express "traffic matching ``erp.zephyrex.ca`` routes to pool X" — so
 that intent kept falling back to unstructured ``config_context``. This plugin adds a single
-``LBRoutingRule`` model FK-ing a ``Listener`` to a ``VirtualIPPool`` with a match type + pattern,
+``LBRoutingRule`` model FK-ing a ``Listener`` to a ``Pool`` with a match type + pattern,
 making the HAProxy ACL a real, query-able, REST/GraphQL-exposed object.
 """
 
 from netbox.plugins import PluginConfig
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 
 class NetBoxLoadBalancingACLConfig(PluginConfig):

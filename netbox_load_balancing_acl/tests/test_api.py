@@ -3,9 +3,9 @@
 
 Composes the explicit CRUD mixins (not the GraphQL-inclusive APIViewTestCase) since the plugin
 ships no GraphQL type yet. Each created rule needs a fresh listener so the (listener, order)
-uniqueness constraint never trips inside the create batch; pools are real VirtualIPPool rows."""
+uniqueness constraint never trips inside the create batch; pools are real Pool rows."""
 
-from netbox_load_balancing.models import LBService, Listener, VirtualIPPool
+from netbox_load_balancing.models import LBService, Listener, Pool
 from utilities.testing import APIViewTestCases
 from netbox_load_balancing_acl.models import LBRoutingRule
 
@@ -32,7 +32,7 @@ class LBRoutingRuleAPITest(_CRUD):
 
     @classmethod
     def setUpTestData(cls):
-        pool = VirtualIPPool.objects.create(name="api-pool")
+        pool = Pool.objects.create(name="api-pool")
         existing = [_listener(f"ex{i}") for i in range(3)]
         LBRoutingRule.objects.bulk_create(
             [

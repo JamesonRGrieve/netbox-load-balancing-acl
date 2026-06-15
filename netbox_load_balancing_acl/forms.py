@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from django import forms
 from netbox.forms import NetBoxModelFilterSetForm, NetBoxModelForm
-from netbox_load_balancing.models import Listener, VirtualIPPool
+from netbox_load_balancing.models import Listener, Pool
 from utilities.forms.fields import (
     DynamicModelChoiceField,
     DynamicModelMultipleChoiceField,
@@ -14,7 +14,7 @@ from .models import LBRoutingRule
 
 class LBRoutingRuleForm(NetBoxModelForm):
     listener = DynamicModelChoiceField(queryset=Listener.objects.all())
-    target_pool = DynamicModelChoiceField(queryset=VirtualIPPool.objects.all())
+    target_pool = DynamicModelChoiceField(queryset=Pool.objects.all())
 
     fieldsets = (
         FieldSet("listener", "order", name="Frontend"),
@@ -33,7 +33,7 @@ class LBRoutingRuleFilterForm(NetBoxModelFilterSetForm):
         queryset=Listener.objects.all(), required=False, label="Listener"
     )
     target_pool_id = DynamicModelMultipleChoiceField(
-        queryset=VirtualIPPool.objects.all(), required=False, label="Target pool"
+        queryset=Pool.objects.all(), required=False, label="Target pool"
     )
     match_type = forms.MultipleChoiceField(choices=LBRoutingMatchTypeChoices, required=False)
     negate = forms.NullBooleanField(required=False)

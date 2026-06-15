@@ -6,12 +6,13 @@ re-targeted from switch L2 features to **load-balancer routing ACLs**.
 `netbox-load-balancing-acl` is an **AGPL-3.0** NetBox 4.6 Django plugin that adds the **one
 routing primitive** the third-party `netbox_load_balancing` plugin is missing: **host / SNI /
 path → backend-pool routing rules** (HAProxy ACLs). `netbox_load_balancing` models the listener
-(frontend) and the backend `VirtualIPPool` but cannot express "traffic matching
+(frontend) and the backend `Pool` but cannot express "traffic matching
 `erp.zephyrex.ca` routes to pool X"; that intent used to fall back to unstructured
 `config_context`. This plugin makes the ACL a real, choice-validated, REST/GraphQL-exposed row.
 
 It **depends on `netbox_load_balancing`** (declared via `required_plugins`), and its single
-model FKs that plugin's `Listener` and `VirtualIPPool` models.
+model FKs that plugin's `Listener` and `Pool` models. (NB: the backend is `Pool` — upstream API
+mount `pools`, 1-per-backend — NOT `VirtualIPPool`, which is the frontend VIP at `virtual-pools`.)
 
 ---
 
@@ -40,7 +41,7 @@ model FKs that plugin's `Listener` and `VirtualIPPool` models.
 - Use bandaid fixes instead of fixing the core functionality.
 - **Mock the database, the ORM, the NetBox API test client, or any integration path.** Tests run
   against a **real test database** via NetBox's Django test framework — use real model instances
-  (including real `netbox_load_balancing` `LBService`/`Listener`/`VirtualIPPool`) and real API
+  (including real `netbox_load_balancing` `LBService`/`Listener`/`Pool`) and real API
   requests. Only pure utility functions may use mocks for isolation.
 
 ### Python / Django Guidelines:
@@ -78,8 +79,9 @@ model FKs that plugin's `Listener` and `VirtualIPPool` models.
     lives on.
   - `match_type` — `host` / `sni` / `path_prefix`.
   - `pattern` — the match value (`erp.zephyrex.ca`, `/api`).
-  - `target_pool` → FK `netbox_load_balancing.VirtualIPPool`, `on_delete=PROTECT` — backend pool
-    matching traffic routes to. (The class is `VirtualIPPool`; the upstream API mount is "pools".)
+  - `target_pool` → FK `netbox_load_balancing.Pool`, `on_delete=PROTECT` — backend server pool
+    matching traffic routes to (the upstream `pools` mount; NOT `VirtualIPPool`, the frontend VIP
+    at `virtual-pools` — the original FK conflated the two).
   - `order` — evaluation order (lower first).
   - `negate` — invert the match.
   - `UniqueConstraint(listener, order)` — one rule per evaluation slot per listener.
@@ -96,7 +98,7 @@ latest migration so both target tables exist before `LBRoutingRule` is created.
   netbox_load_balancing_acl` discovers them and they ship with the plugin), one module per source
   module (`test_models.py`, `test_api.py`, `test_filtersets.py`).
 - Build real upstream objects: an `LBService` (needs `name` + `reference`) backs a `Listener`
-  (needs `name`, `service`, `port`); a `VirtualIPPool` needs only `name`. A routing rule needs a
+  (needs `name`, `service`, `port`); a `Pool` needs only `name`. A routing rule needs a
   fresh listener per `order` value to respect the `(listener, order)` constraint.
 - Use NetBox's base classes from `utilities.testing`: `APIViewTestCases.APIViewTestCase` (composed
   CRUD mixins).
