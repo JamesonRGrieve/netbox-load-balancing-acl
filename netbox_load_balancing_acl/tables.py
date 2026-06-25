@@ -7,6 +7,7 @@ from .models import LBRoutingRule
 class LBRoutingRuleTable(NetBoxTable):
     listener = tables.Column(linkify=True)
     target_pool = tables.Column(linkify=True)
+    action_type = columns.ChoiceFieldColumn()
     match_type = columns.ChoiceFieldColumn()
     tags = columns.TagColumn(url_name="plugins:netbox_load_balancing_acl:lbroutingrule_list")
 
@@ -16,13 +17,26 @@ class LBRoutingRuleTable(NetBoxTable):
             "pk",
             "id",
             "listener",
+            "order",
+            "action_type",
+            "acl_name",
             "match_type",
             "pattern",
-            "target_pool",
-            "order",
+            "case_sensitive",
             "negate",
+            "target_pool",
+            "header_name",
+            "header_value",
+            "redirect_rule",
             "tags",
             "created",
             "last_updated",
         )
-        default_columns = ("listener", "match_type", "pattern", "target_pool", "order", "negate")
+        default_columns = (
+            "listener",
+            "order",
+            "action_type",
+            "match_type",
+            "pattern",
+            "target_pool",
+        )

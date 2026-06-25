@@ -10,7 +10,7 @@ class LBRoutingRuleSerializer(NetBoxModelSerializer):
         view_name="plugins-api:netbox_load_balancing_acl-api:lbroutingrule-detail"
     )
     listener = ListenerSerializer(nested=True)
-    target_pool = PoolSerializer(nested=True)
+    target_pool = PoolSerializer(nested=True, required=False, allow_null=True)
 
     class Meta:
         model = LBRoutingRule
@@ -19,14 +19,20 @@ class LBRoutingRuleSerializer(NetBoxModelSerializer):
             "url",
             "display",
             "listener",
+            "order",
+            "action_type",
+            "acl_name",
             "match_type",
             "pattern",
-            "target_pool",
-            "order",
+            "case_sensitive",
             "negate",
+            "target_pool",
+            "header_name",
+            "header_value",
+            "redirect_rule",
             "tags",
             "custom_fields",
             "created",
             "last_updated",
         ]
-        brief_fields = ["id", "url", "display", "listener", "match_type", "pattern"]
+        brief_fields = ["id", "url", "display", "listener", "order", "action_type"]

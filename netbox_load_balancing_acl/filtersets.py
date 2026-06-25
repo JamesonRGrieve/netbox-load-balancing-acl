@@ -3,7 +3,7 @@ import django_filters
 from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
 from netbox_load_balancing.models import Listener, Pool
-from .choices import LBRoutingMatchTypeChoices
+from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
 from .models import LBRoutingRule
 
 
@@ -16,13 +16,17 @@ class LBRoutingRuleFilterSet(NetBoxModelFilterSet):
     target_pool_id = django_filters.ModelMultipleChoiceFilter(
         field_name="target_pool", queryset=Pool.objects.all(), label="Target pool (ID)"
     )
+    action_type = django_filters.MultipleChoiceFilter(choices=LBRoutingActionTypeChoices)
     match_type = django_filters.MultipleChoiceFilter(choices=LBRoutingMatchTypeChoices)
 
     class Meta:
         model = LBRoutingRule
-        fields = ["id", "order", "negate"]
+        fields = ["id", "order", "negate", "case_sensitive", "acl_name"]
 
     def search(self, queryset, name, value):
         return queryset.filter(
-            Q(pattern__icontains=value) | Q(listener__name__icontains=value)
+            Q(pattern__icontains=value)
+            | Q(listener__name__icontains=value)
+            | Q(acl_name__icontains=value)
+            | Q(header_name__icontains=value)
         )

@@ -3,12 +3,16 @@
 uniqueness constraint, CASCADE from the listener, and PROTECT on the target pool. Real
 netbox_load_balancing Listener + Pool instances back every routing rule."""
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from netbox_load_balancing.models import LBService, Listener, Pool
-from netbox_load_balancing_acl.choices import LBRoutingMatchTypeChoices
+from netbox_load_balancing_acl.choices import (
+    LBRoutingActionTypeChoices,
+    LBRoutingMatchTypeChoices,
+)
 from netbox_load_balancing_acl.models import LBRoutingRule
 
 
@@ -96,3 +100,67 @@ class LBRoutingRuleModelTest(TestCase):
         )
         with self.assertRaises(ProtectedError), transaction.atomic():
             protected_pool.delete()
+
+    # ── action-type generalization (header / redirect / match-variants) ──
+
+    def test_use_backend_is_default_action(self):
+        r = LBRoutingRule.objects.create(
+            listener=self.listener,
+            match_type=LBRoutingMatchTypeChoices.HOST_MATCHES,
+            pattern="erp.zephyrex.ca",
+            target_pool=self.pool,
+        )
+        self.assertEqual(r.action_type, LBRoutingActionTypeChoices.USE_BACKEND)
+        self.assertEqual(r.get_match_type_color(), "indigo")  # host_matches
+        self.assertEqual(r.get_action_type_color(), "blue")
+
+    def test_header_action_no_pool(self):
+        r = LBRoutingRule.objects.create(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.SET_HEADER_REQUEST,
+            header_name="X-Forwarded-Proto",
+            header_value="https",
+            order=11,
+        )
+        r.full_clean()  # must not raise (no pool / no match required)
+        self.assertIsNone(r.target_pool)
+        self.assertIn("X-Forwarded-Proto", str(r))
+
+    def test_redirect_action_no_pool(self):
+        r = LBRoutingRule.objects.create(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.REDIRECT,
+            redirect_rule="scheme https code 301",
+            order=12,
+        )
+        r.full_clean()
+        self.assertIn("redirect", str(r))
+
+    def test_clean_use_backend_requires_pool_and_match(self):
+        r = LBRoutingRule(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.USE_BACKEND,
+            pattern="x.example",
+            order=13,
+        )  # no target_pool
+        with self.assertRaises(ValidationError):
+            r.clean()
+
+    def test_clean_redirect_requires_rule(self):
+        r = LBRoutingRule(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.REDIRECT,
+            order=14,
+        )
+        with self.assertRaises(ValidationError):
+            r.clean()
+
+    def test_clean_set_header_requires_name(self):
+        r = LBRoutingRule(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.SET_HEADER_RESPONSE,
+            header_value="nginx",
+            order=15,
+        )
+        with self.assertRaises(ValidationError):
+            r.clean()
