@@ -2,7 +2,34 @@
 from netbox.api.serializers import NetBoxModelSerializer
 from netbox_load_balancing.api.serializers import ListenerSerializer, PoolSerializer
 from rest_framework import serializers
-from ..models import LBRoutingRule
+from ..models import LBAcl, LBRoutingRule
+
+
+class LBAclSerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="plugins-api:netbox_load_balancing_acl-api:lbacl-detail"
+    )
+    listener = ListenerSerializer(nested=True)
+
+    class Meta:
+        model = LBAcl
+        fields = [
+            "id",
+            "url",
+            "display",
+            "listener",
+            "order",
+            "name",
+            "match_type",
+            "pattern",
+            "case_sensitive",
+            "negate",
+            "tags",
+            "custom_fields",
+            "created",
+            "last_updated",
+        ]
+        brief_fields = ["id", "url", "display", "listener", "order", "name"]
 
 
 class LBRoutingRuleSerializer(NetBoxModelSerializer):

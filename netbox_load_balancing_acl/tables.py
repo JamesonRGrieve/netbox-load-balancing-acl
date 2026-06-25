@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import django_tables2 as tables
 from netbox.tables import NetBoxTable, columns
-from .models import LBRoutingRule
+from .models import LBAcl, LBRoutingRule
 
 
 class LBRoutingRuleTable(NetBoxTable):
@@ -40,3 +40,28 @@ class LBRoutingRuleTable(NetBoxTable):
             "pattern",
             "target_pool",
         )
+
+
+class LBAclTable(NetBoxTable):
+    listener = tables.Column(linkify=True)
+    name = tables.Column(linkify=True)
+    match_type = columns.ChoiceFieldColumn()
+    tags = columns.TagColumn(url_name="plugins:netbox_load_balancing_acl:lbacl_list")
+
+    class Meta(NetBoxTable.Meta):
+        model = LBAcl
+        fields = (
+            "pk",
+            "id",
+            "listener",
+            "order",
+            "name",
+            "match_type",
+            "pattern",
+            "case_sensitive",
+            "negate",
+            "tags",
+            "created",
+            "last_updated",
+        )
+        default_columns = ("listener", "order", "name", "match_type", "pattern", "negate")

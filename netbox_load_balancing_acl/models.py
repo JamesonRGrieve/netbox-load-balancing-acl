@@ -118,3 +118,54 @@ class LBRoutingRule(NetBoxModel):
 
     def get_action_type_color(self):
         return LBRoutingActionTypeChoices.colors.get(self.action_type)
+
+
+class LBAcl(NetBoxModel):
+    """One HAProxy frontend ACL condition (a ``ha_acls`` entry), as a first-class ordered
+    object on a ``netbox_load_balancing.Listener``.
+
+    Modeled separately from ``LBRoutingRule`` (the actions) because the device's ``ha_acls``
+    array and ``a_actionitems`` array are independent, and an ACL is NOT uniquely named:
+    pfSense allows two ACLs with the same name but different expressions (e.g. an OR of
+    host_contains + host_matches for the same domain). The action references an ACL by name,
+    so a duplicate name simply ORs the conditions. Reproducing the live array byte-for-byte
+    (for 0-diff adoption) therefore requires per-position ACL objects, which this provides."""
+
+    listener = models.ForeignKey(
+        "netbox_load_balancing.Listener",
+        on_delete=models.CASCADE,
+        related_name="acls",
+        help_text="The listener (frontend) this ACL lives on.",
+    )
+    order = models.PositiveIntegerField(
+        default=100, help_text="Position in the frontend's ha_acls array (the device id)."
+    )
+    name = models.CharField(
+        max_length=64,
+        help_text="HAProxy ACL name (NOT unique — duplicates OR their conditions).",
+    )
+    match_type = models.CharField(max_length=16, choices=LBRoutingMatchTypeChoices)
+    pattern = models.CharField(max_length=255, help_text="Match value (host/SNI/path).")
+    case_sensitive = models.BooleanField(default=False)
+    negate = models.BooleanField(
+        default=False, help_text="Invert the match (HAProxy `not`)."
+    )
+
+    class Meta:
+        ordering = ["listener", "order"]
+        verbose_name = "LB ACL"
+        verbose_name_plural = "LB ACLs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["listener", "order"], name="lb_acl_listener_order"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.listener}[{self.order}]: {self.name} {self.match_type} {self.pattern}"
+
+    def get_absolute_url(self):
+        return reverse("plugins:netbox_load_balancing_acl:lbacl", args=[self.pk])
+
+    def get_match_type_color(self):
+        return LBRoutingMatchTypeChoices.colors.get(self.match_type)

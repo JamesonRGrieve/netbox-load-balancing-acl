@@ -34,4 +34,22 @@ urlpatterns = [
         name="lbroutingrule_journal",
         kwargs={"model": models.LBRoutingRule},
     ),
+    path("acls/", views.LBAclListView.as_view(), name="lbacl_list"),
+    path("acls/add/", views.LBAclEditView.as_view(), name="lbacl_add"),
+    path("acls/delete/", views.LBAclBulkDeleteView.as_view(), name="lbacl_bulk_delete"),
+    path("acls/<int:pk>/", views.LBAclView.as_view(), name="lbacl"),
+    path("acls/<int:pk>/edit/", views.LBAclEditView.as_view(), name="lbacl_edit"),
+    path("acls/<int:pk>/delete/", views.LBAclDeleteView.as_view(), name="lbacl_delete"),
+    path(
+        "acls/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="lbacl_changelog",
+        kwargs={"model": models.LBAcl},
+    ),
+    path(
+        "acls/<int:pk>/journal/",
+        ObjectJournalView.as_view(),
+        name="lbacl_journal",
+        kwargs={"model": models.LBAcl},
+    ),
 ]

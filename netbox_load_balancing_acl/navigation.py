@@ -11,8 +11,18 @@ _routing = PluginMenuItem(
     ],
 )
 
+_acls = PluginMenuItem(
+    link="plugins:netbox_load_balancing_acl:lbacl_list",
+    link_text="ACLs",
+    buttons=[
+        PluginMenuButton(
+            "plugins:netbox_load_balancing_acl:lbacl_add", "Add", "mdi mdi-plus-thick"
+        )
+    ],
+)
+
 menu = PluginMenu(
     label="Load Balancing ACL",
-    groups=(("Routing", (_routing,)),),
+    groups=(("Routing", (_routing, _acls)),),
     icon_class="mdi mdi-call-split",
 )

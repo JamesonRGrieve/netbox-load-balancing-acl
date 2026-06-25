@@ -26,3 +26,28 @@ class LBRoutingRuleDeleteView(generic.ObjectDeleteView):
 class LBRoutingRuleBulkDeleteView(generic.BulkDeleteView):
     queryset = models.LBRoutingRule.objects.all()
     table = tables.LBRoutingRuleTable
+
+
+class LBAclView(generic.ObjectView):
+    queryset = models.LBAcl.objects.all()
+
+
+class LBAclListView(generic.ObjectListView):
+    queryset = models.LBAcl.objects.all()
+    table = tables.LBAclTable
+    filterset = filtersets.LBAclFilterSet
+    filterset_form = forms.LBAclFilterForm
+
+
+class LBAclEditView(generic.ObjectEditView):
+    queryset = models.LBAcl.objects.all()
+    form = forms.LBAclForm
+
+
+class LBAclDeleteView(generic.ObjectDeleteView):
+    queryset = models.LBAcl.objects.all()
+
+
+class LBAclBulkDeleteView(generic.BulkDeleteView):
+    queryset = models.LBAcl.objects.all()
+    table = tables.LBAclTable

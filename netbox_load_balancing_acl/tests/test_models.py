@@ -13,7 +13,7 @@ from netbox_load_balancing_acl.choices import (
     LBRoutingActionTypeChoices,
     LBRoutingMatchTypeChoices,
 )
-from netbox_load_balancing_acl.models import LBRoutingRule
+from netbox_load_balancing_acl.models import LBAcl, LBRoutingRule
 
 
 def make_listener(name="fe"):
@@ -164,3 +164,34 @@ class LBRoutingRuleModelTest(TestCase):
         )
         with self.assertRaises(ValidationError):
             r.clean()
+
+
+class LBAclModelTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.listener = make_listener("fe-acl")
+
+    def test_create_and_str(self):
+        a = LBAcl.objects.create(
+            listener=self.listener, order=0, name="acl_mail",
+            match_type=LBRoutingMatchTypeChoices.HOST_STARTS_WITH, pattern="mail.",
+        )
+        self.assertIn("acl_mail", str(a))
+        self.assertIn("/plugins/lb-acl/acls/", a.get_absolute_url())
+        self.assertEqual(a.get_match_type_color(), "cyan")
+
+    def test_duplicate_names_allowed(self):
+        # pfSense permits two ACLs with the same name (OR of conditions) — distinct order.
+        LBAcl.objects.create(listener=self.listener, order=0, name="acl_wp_bighearts",
+                             match_type=LBRoutingMatchTypeChoices.HOST_CONTAINS, pattern="x.com")
+        a2 = LBAcl.objects.create(listener=self.listener, order=1, name="acl_wp_bighearts",
+                                  match_type=LBRoutingMatchTypeChoices.HOST_MATCHES, pattern="x.com")
+        self.assertEqual(LBAcl.objects.filter(name="acl_wp_bighearts").count(), 2)
+        self.assertEqual(a2.order, 1)
+
+    def test_unique_listener_order(self):
+        LBAcl.objects.create(listener=self.listener, order=5, name="a",
+                             match_type=LBRoutingMatchTypeChoices.HOST_MATCHES, pattern="a")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            LBAcl.objects.create(listener=self.listener, order=5, name="b",
+                                 match_type=LBRoutingMatchTypeChoices.HOST_MATCHES, pattern="b")

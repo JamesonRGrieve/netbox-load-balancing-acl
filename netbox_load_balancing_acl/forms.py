@@ -9,7 +9,7 @@ from utilities.forms.fields import (
 )
 from utilities.forms.rendering import FieldSet
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
-from .models import LBRoutingRule
+from .models import LBAcl, LBRoutingRule
 
 
 class LBRoutingRuleForm(NetBoxModelForm):
@@ -56,3 +56,26 @@ class LBRoutingRuleFilterForm(NetBoxModelFilterSetForm):
     match_type = forms.MultipleChoiceField(choices=LBRoutingMatchTypeChoices, required=False)
     negate = forms.NullBooleanField(required=False)
     tag = TagFilterField(LBRoutingRule)
+
+
+class LBAclForm(NetBoxModelForm):
+    listener = DynamicModelChoiceField(queryset=Listener.objects.all())
+
+    fieldsets = (
+        FieldSet("listener", "order", name="ACL"),
+        FieldSet("name", "match_type", "pattern", "case_sensitive", "negate", name="Match"),
+    )
+
+    class Meta:
+        model = LBAcl
+        fields = ["listener", "order", "name", "match_type", "pattern", "case_sensitive", "negate", "tags"]
+
+
+class LBAclFilterForm(NetBoxModelFilterSetForm):
+    model = LBAcl
+    listener_id = DynamicModelMultipleChoiceField(
+        queryset=Listener.objects.all(), required=False, label="Listener"
+    )
+    match_type = forms.MultipleChoiceField(choices=LBRoutingMatchTypeChoices, required=False)
+    negate = forms.NullBooleanField(required=False)
+    tag = TagFilterField(LBAcl)

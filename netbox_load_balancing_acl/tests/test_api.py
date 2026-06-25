@@ -7,7 +7,7 @@ uniqueness constraint never trips inside the create batch; pools are real Pool r
 
 from netbox_load_balancing.models import LBService, Listener, Pool
 from utilities.testing import APIViewTestCases
-from netbox_load_balancing_acl.models import LBRoutingRule
+from netbox_load_balancing_acl.models import LBAcl, LBRoutingRule
 
 
 def _listener(name):
@@ -83,4 +83,31 @@ class LBRoutingRuleAPITest(
                 "redirect_rule": "scheme https code 301",
                 "order": 50,
             },
+        ]
+
+
+class LBAclAPITest(
+    APIViewTestCases.GetObjectViewTestCase,
+    APIViewTestCases.ListObjectsViewTestCase,
+    APIViewTestCases.CreateObjectViewTestCase,
+    APIViewTestCases.UpdateObjectViewTestCase,
+    APIViewTestCases.DeleteObjectViewTestCase,
+):
+    model = LBAcl
+    brief_fields = ["display", "id", "listener", "name", "order", "url"]
+    bulk_update_data = {"negate": True}
+
+    @classmethod
+    def setUpTestData(cls):
+        existing = [_listener(f"acl-ex{i}") for i in range(3)]
+        LBAcl.objects.bulk_create(
+            [LBAcl(listener=lst, order=0, name=f"acl_ex{i}", match_type="host_matches", pattern=f"ex{i}.com")
+             for i, lst in enumerate(existing)]
+        )
+        fresh = [_listener(f"acl-new{i}") for i in range(3)]
+        cls.create_data = [
+            {"listener": fresh[0].pk, "order": 0, "name": "acl_mail", "match_type": "host_starts_with", "pattern": "mail."},
+            # duplicate name on a different listener+order is fine
+            {"listener": fresh[1].pk, "order": 0, "name": "acl_mail", "match_type": "host_contains", "pattern": "mail2"},
+            {"listener": fresh[2].pk, "order": 1, "name": "acl_path", "match_type": "host_matches", "pattern": "x.com", "negate": True},
         ]
