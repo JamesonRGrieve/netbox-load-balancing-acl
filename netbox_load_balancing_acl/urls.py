@@ -52,4 +52,34 @@ urlpatterns = [
         name="lbacl_journal",
         kwargs={"model": models.LBAcl},
     ),
+    path("listener-certificates/", views.LBListenerCertificateListView.as_view(), name="lblistenercertificate_list"),
+    path("listener-certificates/add/", views.LBListenerCertificateEditView.as_view(), name="lblistenercertificate_add"),
+    path(
+        "listener-certificates/delete/",
+        views.LBListenerCertificateBulkDeleteView.as_view(),
+        name="lblistenercertificate_bulk_delete",
+    ),
+    path("listener-certificates/<int:pk>/", views.LBListenerCertificateView.as_view(), name="lblistenercertificate"),
+    path(
+        "listener-certificates/<int:pk>/edit/",
+        views.LBListenerCertificateEditView.as_view(),
+        name="lblistenercertificate_edit",
+    ),
+    path(
+        "listener-certificates/<int:pk>/delete/",
+        views.LBListenerCertificateDeleteView.as_view(),
+        name="lblistenercertificate_delete",
+    ),
+    path(
+        "listener-certificates/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="lblistenercertificate_changelog",
+        kwargs={"model": models.LBListenerCertificate},
+    ),
+    path(
+        "listener-certificates/<int:pk>/journal/",
+        ObjectJournalView.as_view(),
+        name="lblistenercertificate_journal",
+        kwargs={"model": models.LBListenerCertificate},
+    ),
 ]

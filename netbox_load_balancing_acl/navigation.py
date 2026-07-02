@@ -21,8 +21,20 @@ _acls = PluginMenuItem(
     ],
 )
 
+_certs = PluginMenuItem(
+    link="plugins:netbox_load_balancing_acl:lblistenercertificate_list",
+    link_text="Listener Certificates",
+    buttons=[
+        PluginMenuButton(
+            "plugins:netbox_load_balancing_acl:lblistenercertificate_add",
+            "Add",
+            "mdi mdi-plus-thick",
+        )
+    ],
+)
+
 menu = PluginMenu(
     label="Load Balancing ACL",
-    groups=(("Routing", (_routing, _acls)),),
+    groups=(("Routing", (_routing, _acls, _certs)),),
     icon_class="mdi mdi-call-split",
 )

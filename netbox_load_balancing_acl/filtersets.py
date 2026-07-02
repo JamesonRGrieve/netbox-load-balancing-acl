@@ -4,7 +4,7 @@ from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
 from netbox_load_balancing.models import Listener, Pool
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
-from .models import LBAcl, LBRoutingRule
+from .models import LBAcl, LBListenerCertificate, LBRoutingRule
 
 
 # Explicit FK filters: django-filter does NOT derive `<fk>_id` from a bare FK in Meta.fields,
@@ -45,4 +45,21 @@ class LBAclFilterSet(NetBoxModelFilterSet):
     def search(self, queryset, name, value):
         return queryset.filter(
             Q(name__icontains=value) | Q(pattern__icontains=value) | Q(listener__name__icontains=value)
+        )
+
+
+class LBListenerCertificateFilterSet(NetBoxModelFilterSet):
+    listener_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="listener", queryset=Listener.objects.all(), label="Listener (ID)"
+    )
+
+    class Meta:
+        model = LBListenerCertificate
+        fields = ["id", "order", "ssl_certificate"]
+
+    def search(self, queryset, name, value):
+        return queryset.filter(
+            Q(ssl_certificate__icontains=value)
+            | Q(description__icontains=value)
+            | Q(listener__name__icontains=value)
         )

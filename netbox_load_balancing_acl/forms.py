@@ -9,7 +9,7 @@ from utilities.forms.fields import (
 )
 from utilities.forms.rendering import FieldSet
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
-from .models import LBAcl, LBRoutingRule
+from .models import LBAcl, LBListenerCertificate, LBRoutingRule
 
 
 class LBRoutingRuleForm(NetBoxModelForm):
@@ -79,3 +79,24 @@ class LBAclFilterForm(NetBoxModelFilterSetForm):
     match_type = forms.MultipleChoiceField(choices=LBRoutingMatchTypeChoices, required=False)
     negate = forms.NullBooleanField(required=False)
     tag = TagFilterField(LBAcl)
+
+
+class LBListenerCertificateForm(NetBoxModelForm):
+    listener = DynamicModelChoiceField(queryset=Listener.objects.all())
+
+    fieldsets = (
+        FieldSet("listener", "order", name="Binding"),
+        FieldSet("ssl_certificate", "description", name="Certificate"),
+    )
+
+    class Meta:
+        model = LBListenerCertificate
+        fields = ["listener", "order", "ssl_certificate", "description", "tags"]
+
+
+class LBListenerCertificateFilterForm(NetBoxModelFilterSetForm):
+    model = LBListenerCertificate
+    listener_id = DynamicModelMultipleChoiceField(
+        queryset=Listener.objects.all(), required=False, label="Listener"
+    )
+    tag = TagFilterField(LBListenerCertificate)

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import django_tables2 as tables
 from netbox.tables import NetBoxTable, columns
-from .models import LBAcl, LBRoutingRule
+from .models import LBAcl, LBListenerCertificate, LBRoutingRule
 
 
 class LBRoutingRuleTable(NetBoxTable):
@@ -65,3 +65,26 @@ class LBAclTable(NetBoxTable):
             "last_updated",
         )
         default_columns = ("listener", "order", "name", "match_type", "pattern", "negate")
+
+
+class LBListenerCertificateTable(NetBoxTable):
+    listener = tables.Column(linkify=True)
+    ssl_certificate = tables.Column(linkify=True)
+    tags = columns.TagColumn(
+        url_name="plugins:netbox_load_balancing_acl:lblistenercertificate_list"
+    )
+
+    class Meta(NetBoxTable.Meta):
+        model = LBListenerCertificate
+        fields = (
+            "pk",
+            "id",
+            "listener",
+            "order",
+            "ssl_certificate",
+            "description",
+            "tags",
+            "created",
+            "last_updated",
+        )
+        default_columns = ("listener", "order", "ssl_certificate", "description")

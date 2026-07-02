@@ -7,5 +7,6 @@ app_name = "netbox_load_balancing_acl"
 router = NetBoxRouter()
 router.register("routing-rules", views.LBRoutingRuleViewSet)
 router.register("acls", views.LBAclViewSet)
+router.register("listener-certificates", views.LBListenerCertificateViewSet)
 
 urlpatterns = router.urls

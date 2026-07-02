@@ -169,3 +169,55 @@ class LBAcl(NetBoxModel):
 
     def get_match_type_color(self):
         return LBRoutingMatchTypeChoices.colors.get(self.match_type)
+
+
+class LBListenerCertificate(NetBoxModel):
+    """One SNI/TLS certificate bound to a ``netbox_load_balancing.Listener`` (the frontend),
+    as a first-class ordered object.
+
+    Reproduces the device's frontend certificate array position-for-position — pfSense
+    ``ha_certificates`` (``[{ssl_certificate: <refid>}, ...]``) and OPNsense
+    ``ssl_certificates`` (a comma-joined refid list). Modeling it natively (rather than
+    leaving the frontend's cert set live-managed) is what lets an adopted frontend's SNI
+    certs render at 0-diff AND lets a new Cloudflare/ACME cert be APPENDED to the frontend
+    through the pipeline. ``ssl_certificate`` is the device cert-store refid: opaque and
+    device-assigned (ACME issuance yields the refid, which is recorded here to bind it)."""
+
+    listener = models.ForeignKey(
+        "netbox_load_balancing.Listener",
+        on_delete=models.CASCADE,
+        related_name="certificates",
+        help_text="The listener (frontend) this certificate is bound to.",
+    )
+    order = models.PositiveIntegerField(
+        default=100,
+        help_text="Position in the frontend's ha_certificates / ssl_certificates array.",
+    )
+    ssl_certificate = models.CharField(
+        max_length=64,
+        help_text="Device cert-store refid (pfSense/OPNsense-assigned, opaque). An "
+        "ACME-issued cert's refid is recorded here to bind it onto the frontend.",
+    )
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Human note — e.g. the FQDN this cert covers (not sent to the device).",
+    )
+
+    class Meta:
+        ordering = ["listener", "order"]
+        verbose_name = "LB Listener Certificate"
+        verbose_name_plural = "LB Listener Certificates"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["listener", "order"], name="lb_listener_cert_listener_order"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.listener}[{self.order}]: {self.ssl_certificate}"
+
+    def get_absolute_url(self):
+        return reverse(
+            "plugins:netbox_load_balancing_acl:lblistenercertificate", args=[self.pk]
+        )
