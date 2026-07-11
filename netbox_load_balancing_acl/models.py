@@ -92,6 +92,8 @@ class LBRoutingRule(NetBoxModel):
     def __str__(self):
         if self.action_type == LBRoutingActionTypeChoices.USE_BACKEND:
             return f"{self.listener}: {self.match_type} {self.pattern} → {self.target_pool}"
+        if self.action_type == LBRoutingActionTypeChoices.DEFAULT_BACKEND:
+            return f"{self.listener}: default_backend → {self.target_pool}"
         if self.action_type == LBRoutingActionTypeChoices.REDIRECT:
             return f"{self.listener}: redirect {self.redirect_rule}"
         return f"{self.listener}: {self.action_type} {self.header_name}={self.header_value}"
@@ -103,6 +105,10 @@ class LBRoutingRule(NetBoxModel):
                 raise ValidationError({"target_pool": "Required for a use_backend action."})
             if not self.match_type:
                 raise ValidationError({"match_type": "Required for a use_backend action."})
+        elif self.action_type == LBRoutingActionTypeChoices.DEFAULT_BACKEND:
+            # Catch-all: only the target pool matters; no ACL/match is used.
+            if not self.target_pool_id:
+                raise ValidationError({"target_pool": "Required for a default_backend action."})
         elif self.action_type == LBRoutingActionTypeChoices.REDIRECT:
             if not self.redirect_rule:
                 raise ValidationError({"redirect_rule": "Required for a redirect action."})

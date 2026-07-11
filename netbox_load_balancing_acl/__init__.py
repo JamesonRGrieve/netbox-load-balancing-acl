@@ -12,7 +12,7 @@ making the HAProxy ACL a real, query-able, REST/GraphQL-exposed object.
 
 from netbox.plugins import PluginConfig
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 
 class NetBoxLoadBalancingACLConfig(PluginConfig):

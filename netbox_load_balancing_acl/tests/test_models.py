@@ -165,6 +165,28 @@ class LBRoutingRuleModelTest(TestCase):
         with self.assertRaises(ValidationError):
             r.clean()
 
+    def test_default_backend_action(self):
+        r = LBRoutingRule.objects.create(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.DEFAULT_BACKEND,
+            target_pool=self.pool,
+            order=16,
+        )
+        r.full_clean()  # no match_type / acl_name / pattern required
+        self.assertEqual(r.action_type, LBRoutingActionTypeChoices.DEFAULT_BACKEND)
+        self.assertEqual(r.get_action_type_color(), "green")
+        self.assertIn("default_backend", str(r))
+        self.assertEqual(r.target_pool, self.pool)
+
+    def test_clean_default_backend_requires_pool(self):
+        r = LBRoutingRule(
+            listener=self.listener,
+            action_type=LBRoutingActionTypeChoices.DEFAULT_BACKEND,
+            order=17,
+        )  # no target_pool
+        with self.assertRaises(ValidationError):
+            r.clean()
+
 
 class LBAclModelTest(TestCase):
     @classmethod

@@ -37,14 +37,21 @@ class LBRoutingActionTypeChoices(ChoiceSet):
     scheme/redirect. Modeling each action type natively lets an adopted pfSense frontend
     reproduce its full ``a_actionitems`` array at 0-diff instead of clobbering the
     non-routing actions.
+
+    ``default_backend`` is the frontend's catch-all: the pool that serves any request
+    matching no ``use_backend`` rule (HAProxy ``default_backend`` / pfSense
+    ``backend_serverpool``). It carries only a ``target_pool`` — no ACL/match — and the
+    tofu bridge renders it as the frontend default rather than an ordered action.
     """
 
     USE_BACKEND = "use_backend"
+    DEFAULT_BACKEND = "default_backend"
     SET_HEADER_REQUEST = "http-request_set-header"
     SET_HEADER_RESPONSE = "http-response_set-header"
     REDIRECT = "http-request_redirect"
     CHOICES = [
         (USE_BACKEND, "Route to backend pool (use_backend)", "blue"),
+        (DEFAULT_BACKEND, "Default backend (catch-all)", "green"),
         (SET_HEADER_REQUEST, "Set request header", "orange"),
         (SET_HEADER_RESPONSE, "Set response header", "yellow"),
         (REDIRECT, "HTTP redirect", "red"),
