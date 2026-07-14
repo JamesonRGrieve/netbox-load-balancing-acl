@@ -8,5 +8,6 @@ router = NetBoxRouter()
 router.register("routing-rules", views.LBRoutingRuleViewSet)
 router.register("acls", views.LBAclViewSet)
 router.register("listener-certificates", views.LBListenerCertificateViewSet)
+router.register("member-ha", views.LBMemberHAViewSet)
 
 urlpatterns = router.urls

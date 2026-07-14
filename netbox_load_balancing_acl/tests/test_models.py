@@ -1,19 +1,32 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Model tests against a real DB (no mocks): creation, str/url/color, the (listener, order)
 uniqueness constraint, CASCADE from the listener, and PROTECT on the target pool. Real
-netbox_load_balancing Listener + Pool instances back every routing rule."""
+netbox_load_balancing Listener + Pool instances back every routing rule.
 
+LBMemberHA is exercised against real Member / Pool / MemberAssignment rows — the HA role hangs
+off the assignment (the server line), so the tests assert the one-to-one, the CASCADE from the
+assignment, and that clean() refuses a health-monitor assignment."""
+
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.db.utils import IntegrityError
 from django.test import TestCase
-from netbox_load_balancing.models import LBService, Listener, Pool
+from ipam.models import IPAddress
+from netbox_load_balancing.models import (
+    HealthMonitor,
+    LBService,
+    Listener,
+    Member,
+    MemberAssignment,
+    Pool,
+)
 from netbox_load_balancing_acl.choices import (
     LBRoutingActionTypeChoices,
     LBRoutingMatchTypeChoices,
 )
-from netbox_load_balancing_acl.models import LBAcl, LBRoutingRule
+from netbox_load_balancing_acl.models import LBAcl, LBMemberHA, LBRoutingRule
 
 
 def make_listener(name="fe"):
@@ -23,6 +36,19 @@ def make_listener(name="fe"):
 
 def make_pool(name="pool"):
     return Pool.objects.create(name=name)
+
+
+def make_member(name, address):
+    ip = IPAddress.objects.create(address=address)
+    return Member.objects.create(name=name, reference=f"ref-{name}", ip_address=ip)
+
+
+def make_assignment(target, member):
+    return MemberAssignment.objects.create(
+        assigned_object_type=ContentType.objects.get_for_model(target),
+        assigned_object_id=target.pk,
+        member=member,
+    )
 
 
 class LBRoutingRuleModelTest(TestCase):
@@ -217,3 +243,47 @@ class LBAclModelTest(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             LBAcl.objects.create(listener=self.listener, order=5, name="b",
                                  match_type=LBRoutingMatchTypeChoices.HOST_MATCHES, pattern="b")
+
+
+class LBMemberHAModelTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.pool = make_pool("wp_tolley_pool")
+        cls.primary = make_member("wp_tolley_pool-wordpress", "203.0.113.6/25")
+        cls.mirror = make_member("wp_tolley_pool-mirror", "198.18.0.6/24")
+        cls.primary_assignment = make_assignment(cls.pool, cls.primary)
+        cls.mirror_assignment = make_assignment(cls.pool, cls.mirror)
+
+    def test_defaults_to_backup(self):
+        ha = LBMemberHA.objects.create(assignment=self.mirror_assignment)
+        ha.full_clean()
+        self.assertTrue(ha.backup)
+        self.assertIn("backup", str(ha))
+        self.assertIn("/plugins/lb-acl/member-ha/", ha.get_absolute_url())
+
+    def test_member_and_pool_properties(self):
+        ha = LBMemberHA.objects.create(assignment=self.mirror_assignment)
+        self.assertEqual(ha.member, self.mirror)
+        self.assertEqual(ha.pool, self.pool)
+
+    def test_explicit_active_role(self):
+        ha = LBMemberHA.objects.create(assignment=self.primary_assignment, backup=False)
+        ha.full_clean()
+        self.assertIn("active", str(ha))
+
+    def test_one_role_per_assignment(self):
+        LBMemberHA.objects.create(assignment=self.mirror_assignment)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            LBMemberHA.objects.create(assignment=self.mirror_assignment, backup=False)
+
+    def test_cascade_from_assignment(self):
+        ha = LBMemberHA.objects.create(assignment=self.mirror_assignment)
+        pk = ha.pk
+        self.mirror_assignment.delete()
+        self.assertFalse(LBMemberHA.objects.filter(pk=pk).exists())
+
+    def test_clean_rejects_health_monitor_assignment(self):
+        monitor = HealthMonitor.objects.create(name="wp-http-check")
+        ha = LBMemberHA(assignment=make_assignment(monitor, self.mirror))
+        with self.assertRaises(ValidationError):
+            ha.clean()

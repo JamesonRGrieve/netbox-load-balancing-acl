@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from django import forms
 from netbox.forms import NetBoxModelFilterSetForm, NetBoxModelForm
-from netbox_load_balancing.models import Listener, Pool
+from netbox_load_balancing.models import Listener, Member, MemberAssignment, Pool
 from utilities.forms.fields import (
     DynamicModelChoiceField,
     DynamicModelMultipleChoiceField,
@@ -9,7 +9,7 @@ from utilities.forms.fields import (
 )
 from utilities.forms.rendering import FieldSet
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
-from .models import LBAcl, LBListenerCertificate, LBRoutingRule
+from .models import LBAcl, LBListenerCertificate, LBMemberHA, LBRoutingRule
 
 
 class LBRoutingRuleForm(NetBoxModelForm):
@@ -100,3 +100,32 @@ class LBListenerCertificateFilterForm(NetBoxModelFilterSetForm):
         queryset=Listener.objects.all(), required=False, label="Listener"
     )
     tag = TagFilterField(LBListenerCertificate)
+
+
+class LBMemberHAForm(NetBoxModelForm):
+    # MemberAssignment.Meta upstream declares no ordering, so its list endpoint raises
+    # QuerySetNotOrdered as soon as it is paginated — which is exactly what the dynamic select
+    # does. Requesting an explicit ordering makes the picker work without patching the base plugin.
+    assignment = DynamicModelChoiceField(
+        queryset=MemberAssignment.objects.all(),
+        query_params={"ordering": "id"},
+        label="Member assignment",
+    )
+
+    fieldsets = (FieldSet("assignment", "backup", "description", name="HA role"),)
+
+    class Meta:
+        model = LBMemberHA
+        fields = ["assignment", "backup", "description", "tags"]
+
+
+class LBMemberHAFilterForm(NetBoxModelFilterSetForm):
+    model = LBMemberHA
+    pool_id = DynamicModelMultipleChoiceField(
+        queryset=Pool.objects.all(), required=False, label="Pool"
+    )
+    member_id = DynamicModelMultipleChoiceField(
+        queryset=Member.objects.all(), required=False, label="Member"
+    )
+    backup = forms.NullBooleanField(required=False)
+    tag = TagFilterField(LBMemberHA)

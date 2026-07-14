@@ -82,4 +82,30 @@ urlpatterns = [
         name="lblistenercertificate_journal",
         kwargs={"model": models.LBListenerCertificate},
     ),
+    path("member-ha/", views.LBMemberHAListView.as_view(), name="lbmemberha_list"),
+    path("member-ha/add/", views.LBMemberHAEditView.as_view(), name="lbmemberha_add"),
+    path(
+        "member-ha/delete/",
+        views.LBMemberHABulkDeleteView.as_view(),
+        name="lbmemberha_bulk_delete",
+    ),
+    path("member-ha/<int:pk>/", views.LBMemberHAView.as_view(), name="lbmemberha"),
+    path("member-ha/<int:pk>/edit/", views.LBMemberHAEditView.as_view(), name="lbmemberha_edit"),
+    path(
+        "member-ha/<int:pk>/delete/",
+        views.LBMemberHADeleteView.as_view(),
+        name="lbmemberha_delete",
+    ),
+    path(
+        "member-ha/<int:pk>/changelog/",
+        ObjectChangeLogView.as_view(),
+        name="lbmemberha_changelog",
+        kwargs={"model": models.LBMemberHA},
+    ),
+    path(
+        "member-ha/<int:pk>/journal/",
+        ObjectJournalView.as_view(),
+        name="lbmemberha_journal",
+        kwargs={"model": models.LBMemberHA},
+    ),
 ]

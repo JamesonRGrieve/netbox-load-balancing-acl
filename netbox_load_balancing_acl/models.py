@@ -227,3 +227,71 @@ class LBListenerCertificate(NetBoxModel):
         return reverse(
             "plugins:netbox_load_balancing_acl:lblistenercertificate", args=[self.pk]
         )
+
+
+class LBMemberHA(NetBoxModel):
+    """The HA role of one member *within one backend pool* — the HAProxy ``backup`` keyword.
+
+    The role belongs to the **membership**, not the member: ``backup`` is an attribute of a
+    ``server`` line inside a ``backend``, and the same ``netbox_load_balancing.Member`` may be
+    assigned to more than one pool. The upstream through-model ``MemberAssignment`` (which
+    already carries ``weight`` and ``disabled``) is therefore the correct grain, and this is a
+    satellite one-to-one on it rather than a field on ``Member`` — the third-party base plugin
+    is not modified.
+
+    Absence of a row means **active**, which is the device default. A row exists to declare a
+    standby: the device emits ``backup`` on that server, so it takes traffic only once every
+    non-backup member of the pool fails its health check. This is the failover primitive behind
+    a client site's house mirror being registered in the primary's ingress pool.
+
+    ``MemberAssignment`` also attaches members to a ``HealthMonitor``; ``backup`` is meaningless
+    there, so ``clean()`` constrains the assignment to a ``Pool``."""
+
+    assignment = models.OneToOneField(
+        "netbox_load_balancing.MemberAssignment",
+        on_delete=models.CASCADE,
+        related_name="ha",
+        help_text="The pool↔member assignment (the HAProxy server line) this role applies to.",
+    )
+    backup = models.BooleanField(
+        default=True,
+        help_text="Serve only when every non-backup member of the pool is down (HAProxy "
+        "`backup`). A member with no LBMemberHA row is active.",
+    )
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Human note — e.g. what this standby is a mirror of (not sent to the device).",
+    )
+
+    class Meta:
+        ordering = ["assignment"]
+        verbose_name = "LB Member HA"
+        verbose_name_plural = "LB Member HA"
+
+    def __str__(self):
+        return f"{self.assignment}: {'backup' if self.backup else 'active'}"
+
+    def clean(self):
+        super().clean()
+        # Compare the content type rather than importing Pool: the limit_choices_to upstream is
+        # itself expressed on (app_label, model), and a model-module import of a sibling plugin
+        # runs before the app registry is populated.
+        if (
+            self.assignment_id
+            and self.assignment.assigned_object_type.model != "pool"
+        ):
+            raise ValidationError(
+                {"assignment": "The assignment must be to a Pool (a backend), not a health monitor."}
+            )
+
+    def get_absolute_url(self):
+        return reverse("plugins:netbox_load_balancing_acl:lbmemberha", args=[self.pk])
+
+    @property
+    def member(self):
+        return self.assignment.member
+
+    @property
+    def pool(self):
+        return self.assignment.assigned_object

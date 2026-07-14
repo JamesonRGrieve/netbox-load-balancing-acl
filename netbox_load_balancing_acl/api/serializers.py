@@ -1,8 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from netbox.api.serializers import NetBoxModelSerializer
-from netbox_load_balancing.api.serializers import ListenerSerializer, PoolSerializer
+from netbox_load_balancing.api.serializers import (
+    ListenerSerializer,
+    MemberAssignmentSerializer,
+    PoolSerializer,
+)
 from rest_framework import serializers
-from ..models import LBAcl, LBListenerCertificate, LBRoutingRule
+from ..models import LBAcl, LBListenerCertificate, LBMemberHA, LBRoutingRule
 
 
 class LBAclSerializer(NetBoxModelSerializer):
@@ -87,3 +91,28 @@ class LBListenerCertificateSerializer(NetBoxModelSerializer):
             "last_updated",
         ]
         brief_fields = ["id", "url", "display", "listener", "order", "ssl_certificate"]
+
+
+class LBMemberHASerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="plugins-api:netbox_load_balancing_acl-api:lbmemberha-detail"
+    )
+    # The nested assignment carries both sides of the server line (member + assigned_object),
+    # so no separate member/pool fields are needed to join this row to a backend.
+    assignment = MemberAssignmentSerializer(nested=True)
+
+    class Meta:
+        model = LBMemberHA
+        fields = [
+            "id",
+            "url",
+            "display",
+            "assignment",
+            "backup",
+            "description",
+            "tags",
+            "custom_fields",
+            "created",
+            "last_updated",
+        ]
+        brief_fields = ["id", "url", "display", "assignment", "backup"]

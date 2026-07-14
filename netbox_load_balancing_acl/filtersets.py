@@ -2,9 +2,9 @@
 import django_filters
 from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
-from netbox_load_balancing.models import Listener, Pool
+from netbox_load_balancing.models import Listener, Member, MemberAssignment, Pool
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
-from .models import LBAcl, LBListenerCertificate, LBRoutingRule
+from .models import LBAcl, LBListenerCertificate, LBMemberHA, LBRoutingRule
 
 
 # Explicit FK filters: django-filter does NOT derive `<fk>_id` from a bare FK in Meta.fields,
@@ -62,4 +62,38 @@ class LBListenerCertificateFilterSet(NetBoxModelFilterSet):
             Q(ssl_certificate__icontains=value)
             | Q(description__icontains=value)
             | Q(listener__name__icontains=value)
+        )
+
+
+class LBMemberHAFilterSet(NetBoxModelFilterSet):
+    assignment_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="assignment",
+        queryset=MemberAssignment.objects.all(),
+        label="Member assignment (ID)",
+    )
+    member_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="assignment__member", queryset=Member.objects.all(), label="Member (ID)"
+    )
+    # The pool is the generic target of the assignment, so it needs an explicit traversal of
+    # (assigned_object_type, assigned_object_id) rather than a plain FK filter.
+    pool_id = django_filters.ModelMultipleChoiceFilter(
+        queryset=Pool.objects.all(), method="filter_pool", label="Pool (ID)"
+    )
+
+    class Meta:
+        model = LBMemberHA
+        fields = ["id", "backup"]
+
+    def filter_pool(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(
+            assignment__assigned_object_type__app_label="netbox_load_balancing",
+            assignment__assigned_object_type__model="pool",
+            assignment__assigned_object_id__in=[pool.pk for pool in value],
+        )
+
+    def search(self, queryset, name, value):
+        return queryset.filter(
+            Q(assignment__member__name__icontains=value) | Q(description__icontains=value)
         )

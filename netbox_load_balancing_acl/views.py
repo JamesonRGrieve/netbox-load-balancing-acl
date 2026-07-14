@@ -76,3 +76,28 @@ class LBListenerCertificateDeleteView(generic.ObjectDeleteView):
 class LBListenerCertificateBulkDeleteView(generic.BulkDeleteView):
     queryset = models.LBListenerCertificate.objects.all()
     table = tables.LBListenerCertificateTable
+
+
+class LBMemberHAView(generic.ObjectView):
+    queryset = models.LBMemberHA.objects.all()
+
+
+class LBMemberHAListView(generic.ObjectListView):
+    queryset = models.LBMemberHA.objects.all()
+    table = tables.LBMemberHATable
+    filterset = filtersets.LBMemberHAFilterSet
+    filterset_form = forms.LBMemberHAFilterForm
+
+
+class LBMemberHAEditView(generic.ObjectEditView):
+    queryset = models.LBMemberHA.objects.all()
+    form = forms.LBMemberHAForm
+
+
+class LBMemberHADeleteView(generic.ObjectDeleteView):
+    queryset = models.LBMemberHA.objects.all()
+
+
+class LBMemberHABulkDeleteView(generic.BulkDeleteView):
+    queryset = models.LBMemberHA.objects.all()
+    table = tables.LBMemberHATable

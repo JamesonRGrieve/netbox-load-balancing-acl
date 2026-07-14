@@ -33,8 +33,21 @@ _certs = PluginMenuItem(
     ],
 )
 
+_member_ha = PluginMenuItem(
+    link="plugins:netbox_load_balancing_acl:lbmemberha_list",
+    link_text="Member HA",
+    buttons=[
+        PluginMenuButton(
+            "plugins:netbox_load_balancing_acl:lbmemberha_add", "Add", "mdi mdi-plus-thick"
+        )
+    ],
+)
+
 menu = PluginMenu(
     label="Load Balancing ACL",
-    groups=(("Routing", (_routing, _acls, _certs)),),
+    groups=(
+        ("Routing", (_routing, _acls, _certs)),
+        ("High Availability", (_member_ha,)),
+    ),
     icon_class="mdi mdi-call-split",
 )
