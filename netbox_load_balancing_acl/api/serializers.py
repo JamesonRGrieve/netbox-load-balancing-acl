@@ -1,12 +1,21 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from netbox.api.serializers import NetBoxModelSerializer
 from netbox_load_balancing.api.serializers import (
+    HealthMonitorSerializer,
     ListenerSerializer,
     MemberAssignmentSerializer,
     PoolSerializer,
 )
 from rest_framework import serializers
-from ..models import LBAcl, LBListenerCertificate, LBMemberHA, LBRoutingRule
+from ..models import (
+    LBAcl,
+    LBBackendTuning,
+    LBFrontendTuning,
+    LBHealthCheckTuning,
+    LBListenerCertificate,
+    LBMemberHA,
+    LBRoutingRule,
+)
 
 
 class LBAclSerializer(NetBoxModelSerializer):
@@ -116,3 +125,79 @@ class LBMemberHASerializer(NetBoxModelSerializer):
             "last_updated",
         ]
         brief_fields = ["id", "url", "display", "assignment", "backup"]
+
+
+class LBHealthCheckTuningSerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="plugins-api:netbox_load_balancing_acl-api:lbhealthchecktuning-detail"
+    )
+    monitor = HealthMonitorSerializer(nested=True)
+
+    class Meta:
+        model = LBHealthCheckTuning
+        fields = [
+            "id",
+            "url",
+            "display",
+            "monitor",
+            "fall",
+            "rise",
+            "fast_interval",
+            "down_interval",
+            "http_method",
+            "tags",
+            "custom_fields",
+            "created",
+            "last_updated",
+        ]
+        brief_fields = ["id", "url", "display", "monitor", "fall", "rise"]
+
+
+class LBBackendTuningSerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="plugins-api:netbox_load_balancing_acl-api:lbbackendtuning-detail"
+    )
+    pool = PoolSerializer(nested=True)
+
+    class Meta:
+        model = LBBackendTuning
+        fields = [
+            "id",
+            "url",
+            "display",
+            "pool",
+            "retries",
+            "redispatch",
+            "retry_on",
+            "log_health_checks",
+            "http_check_path",
+            "http_check_method",
+            "custom_options",
+            "tags",
+            "custom_fields",
+            "created",
+            "last_updated",
+        ]
+        brief_fields = ["id", "url", "display", "pool", "retries"]
+
+
+class LBFrontendTuningSerializer(NetBoxModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="plugins-api:netbox_load_balancing_acl-api:lbfrontendtuning-detail"
+    )
+    listener = ListenerSerializer(nested=True)
+
+    class Meta:
+        model = LBFrontendTuning
+        fields = [
+            "id",
+            "url",
+            "display",
+            "listener",
+            "custom_options",
+            "tags",
+            "custom_fields",
+            "created",
+            "last_updated",
+        ]
+        brief_fields = ["id", "url", "display", "listener"]

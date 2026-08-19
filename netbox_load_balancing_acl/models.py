@@ -295,3 +295,162 @@ class LBMemberHA(NetBoxModel):
     @property
     def pool(self):
         return self.assignment.assigned_object
+
+
+class LBHealthCheckTuning(NetBoxModel):
+    """Satellite on ``netbox_load_balancing.HealthMonitor`` for HAProxy health-check
+    timing parameters that the upstream base plugin does not model.
+
+    These control how quickly a server is marked DOWN on failure and how quickly it
+    recovers — the difference between a 10ms blip causing a 30s outage and being
+    invisible."""
+
+    monitor = models.OneToOneField(
+        "netbox_load_balancing.HealthMonitor",
+        on_delete=models.CASCADE,
+        related_name="tuning",
+        help_text="The health monitor this tuning applies to.",
+    )
+    fall = models.PositiveIntegerField(
+        default=3,
+        help_text="Consecutive failed checks to mark server DOWN (HAProxy `fall`).",
+    )
+    rise = models.PositiveIntegerField(
+        default=2,
+        help_text="Consecutive successful checks to mark server UP (HAProxy `rise`).",
+    )
+    fast_interval = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Check interval (ms) during transitional state (HAProxy `fastinter`). "
+        "Null = use the normal interval.",
+    )
+    down_interval = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Check interval (ms) while server is DOWN (HAProxy `downinter`). "
+        "Null = use the normal interval.",
+    )
+    http_method = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        help_text="HTTP method for health checks (GET, HEAD, OPTIONS). "
+        "Empty = platform default.",
+    )
+
+    class Meta:
+        ordering = ["monitor"]
+        verbose_name = "LB Health Check Tuning"
+        verbose_name_plural = "LB Health Check Tuning"
+
+    def __str__(self):
+        return f"{self.monitor}: fall={self.fall} rise={self.rise}"
+
+    def get_absolute_url(self):
+        return reverse(
+            "plugins:netbox_load_balancing_acl:lbhealthchecktuning", args=[self.pk]
+        )
+
+
+class LBBackendTuning(NetBoxModel):
+    """Satellite on ``netbox_load_balancing.Pool`` (the backend) for retry, redispatch,
+    custom pass-thru options, and health-check logging that the upstream base plugin
+    does not model.
+
+    ``custom_options`` is the HAProxy backend pass-thru: raw config lines injected after
+    the generated config. Use for ``default-server`` overrides, ``option redispatch``,
+    ``retry-on``, and any setting not covered by typed fields."""
+
+    pool = models.OneToOneField(
+        "netbox_load_balancing.Pool",
+        on_delete=models.CASCADE,
+        related_name="tuning",
+        help_text="The pool (backend) this tuning applies to.",
+    )
+    retries = models.PositiveIntegerField(
+        default=3,
+        help_text="Number of retries on connection failure (HAProxy `retries`).",
+    )
+    redispatch = models.BooleanField(
+        default=False,
+        help_text="Re-dispatch failed request to another server (HAProxy `option redispatch`).",
+    )
+    retry_on = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Conditions to retry on (HAProxy `retry-on`), e.g. "
+        "'conn-failure empty-response response-timeout 0rtt-rejected'.",
+    )
+    log_health_checks = models.BooleanField(
+        default=False,
+        help_text="Log every health-check state transition (HAProxy `option log-health-checks`).",
+    )
+    http_check_path = models.CharField(
+        max_length=255,
+        blank=True,
+        default="/",
+        help_text="URI path for HTTP health checks (HAProxy `http-check send uri`).",
+    )
+    http_check_method = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+        help_text="HTTP method for backend health checks (GET, HEAD, OPTIONS). "
+        "Empty = platform default.",
+    )
+    custom_options = models.TextField(
+        blank=True,
+        default="",
+        help_text="Raw HAProxy config lines injected into the backend (pass-thru). "
+        "One line per option, e.g. 'default-server inter 5000 fall 5 rise 1'.",
+    )
+
+    class Meta:
+        ordering = ["pool"]
+        verbose_name = "LB Backend Tuning"
+        verbose_name_plural = "LB Backend Tuning"
+
+    def __str__(self):
+        return f"{self.pool}: retries={self.retries}"
+
+    def get_absolute_url(self):
+        return reverse(
+            "plugins:netbox_load_balancing_acl:lbbackendtuning", args=[self.pk]
+        )
+
+
+class LBFrontendTuning(NetBoxModel):
+    """Satellite on ``netbox_load_balancing.Listener`` (the frontend) for custom
+    pass-thru options that the upstream base plugin does not model.
+
+    ``custom_options`` is the HAProxy frontend pass-thru: raw config lines injected
+    after the generated config. Use for ``nbsrv()`` ACLs, ``use_backend`` fallbacks,
+    and any setting not covered by typed fields or routing rules."""
+
+    listener = models.OneToOneField(
+        "netbox_load_balancing.Listener",
+        on_delete=models.CASCADE,
+        related_name="tuning",
+        help_text="The listener (frontend) this tuning applies to.",
+    )
+    custom_options = models.TextField(
+        blank=True,
+        default="",
+        help_text="Raw HAProxy config lines injected into the frontend (pass-thru). "
+        "One line per option.",
+    )
+
+    class Meta:
+        ordering = ["listener"]
+        verbose_name = "LB Frontend Tuning"
+        verbose_name_plural = "LB Frontend Tuning"
+
+    def __str__(self):
+        return f"{self.listener}: custom_options={'yes' if self.custom_options else 'no'}"
+
+    def get_absolute_url(self):
+        return reverse(
+            "plugins:netbox_load_balancing_acl:lbfrontendtuning", args=[self.pk]
+        )

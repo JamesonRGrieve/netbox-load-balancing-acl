@@ -2,9 +2,17 @@
 import django_filters
 from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
-from netbox_load_balancing.models import Listener, Member, MemberAssignment, Pool
+from netbox_load_balancing.models import HealthMonitor, Listener, Member, MemberAssignment, Pool
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
-from .models import LBAcl, LBListenerCertificate, LBMemberHA, LBRoutingRule
+from .models import (
+    LBAcl,
+    LBBackendTuning,
+    LBFrontendTuning,
+    LBHealthCheckTuning,
+    LBListenerCertificate,
+    LBMemberHA,
+    LBRoutingRule,
+)
 
 
 # Explicit FK filters: django-filter does NOT derive `<fk>_id` from a bare FK in Meta.fields,
@@ -97,3 +105,42 @@ class LBMemberHAFilterSet(NetBoxModelFilterSet):
         return queryset.filter(
             Q(assignment__member__name__icontains=value) | Q(description__icontains=value)
         )
+
+
+class LBHealthCheckTuningFilterSet(NetBoxModelFilterSet):
+    monitor_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="monitor", queryset=HealthMonitor.objects.all(), label="Health monitor (ID)"
+    )
+
+    class Meta:
+        model = LBHealthCheckTuning
+        fields = ["id", "fall", "rise", "http_method"]
+
+    def search(self, queryset, name, value):
+        return queryset.filter(Q(monitor__name__icontains=value))
+
+
+class LBBackendTuningFilterSet(NetBoxModelFilterSet):
+    pool_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="pool", queryset=Pool.objects.all(), label="Pool (ID)"
+    )
+
+    class Meta:
+        model = LBBackendTuning
+        fields = ["id", "retries", "redispatch", "log_health_checks"]
+
+    def search(self, queryset, name, value):
+        return queryset.filter(Q(pool__name__icontains=value))
+
+
+class LBFrontendTuningFilterSet(NetBoxModelFilterSet):
+    listener_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="listener", queryset=Listener.objects.all(), label="Listener (ID)"
+    )
+
+    class Meta:
+        model = LBFrontendTuning
+        fields = ["id"]
+
+    def search(self, queryset, name, value):
+        return queryset.filter(Q(listener__name__icontains=value))

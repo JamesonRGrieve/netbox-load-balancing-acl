@@ -9,5 +9,8 @@ router.register("routing-rules", views.LBRoutingRuleViewSet)
 router.register("acls", views.LBAclViewSet)
 router.register("listener-certificates", views.LBListenerCertificateViewSet)
 router.register("member-ha", views.LBMemberHAViewSet)
+router.register("health-check-tuning", views.LBHealthCheckTuningViewSet)
+router.register("backend-tuning", views.LBBackendTuningViewSet)
+router.register("frontend-tuning", views.LBFrontendTuningViewSet)
 
 urlpatterns = router.urls
