@@ -406,6 +406,11 @@ class LBBackendTuning(NetBoxModel):
         help_text="Raw HAProxy config lines injected into the backend (pass-thru). "
         "One line per option, e.g. 'default-server inter 5000 fall 5 rise 1'.",
     )
+    fallback_nocheck = models.BooleanField(
+        default=False,
+        help_text="Auto-generate a no-health-check clone backend + nbsrv() frontend ACL "
+        "so traffic is attempted even when all servers are down (never 503).",
+    )
 
     class Meta:
         ordering = ["pool"]

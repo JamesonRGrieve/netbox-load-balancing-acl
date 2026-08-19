@@ -173,6 +173,7 @@ class LBBackendTuningSerializer(NetBoxModelSerializer):
             "http_check_path",
             "http_check_method",
             "custom_options",
+            "fallback_nocheck",
             "tags",
             "custom_fields",
             "created",
