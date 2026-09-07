@@ -49,10 +49,12 @@ class LBRoutingActionTypeChoices(ChoiceSet):
     SET_HEADER_REQUEST = "http-request_set-header"
     SET_HEADER_RESPONSE = "http-response_set-header"
     REDIRECT = "http-request_redirect"
+    SET_PATH_REQUEST = "http-request_set-path"
     CHOICES = [
         (USE_BACKEND, "Route to backend pool (use_backend)", "blue"),
         (DEFAULT_BACKEND, "Default backend (catch-all)", "green"),
         (SET_HEADER_REQUEST, "Set request header", "orange"),
         (SET_HEADER_RESPONSE, "Set response header", "yellow"),
         (REDIRECT, "HTTP redirect", "red"),
+        (SET_PATH_REQUEST, "Rewrite request path (set-path)", "indigo"),
     ]

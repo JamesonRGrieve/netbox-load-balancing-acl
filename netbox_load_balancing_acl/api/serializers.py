@@ -70,6 +70,7 @@ class LBRoutingRuleSerializer(NetBoxModelSerializer):
             "header_name",
             "header_value",
             "redirect_rule",
+            "set_path",
             "tags",
             "custom_fields",
             "created",

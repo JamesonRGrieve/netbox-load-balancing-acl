@@ -28,6 +28,7 @@ class LBRoutingRuleTable(NetBoxTable):
             "header_name",
             "header_value",
             "redirect_rule",
+            "set_path",
             "tags",
             "created",
             "last_updated",

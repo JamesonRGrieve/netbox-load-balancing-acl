@@ -80,6 +80,15 @@ class LBRoutingRule(NetBoxModel):
         help_text='HAProxy redirect rule for a redirect action, e.g. "scheme https code 301".',
     )
 
+    # ── set-path: transparently rewrite the request URI path ──
+    set_path = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='Target request path for a set-path action, e.g. "/zephyrex-ca-home". '
+        "Transparently rewrites the URI path (no browser redirect); pair with a match "
+        "(match_type/pattern) so only the intended host is rewritten.",
+    )
+
     class Meta:
         ordering = ["listener", "order"]
         verbose_name = "LB Routing Rule"
@@ -96,6 +105,8 @@ class LBRoutingRule(NetBoxModel):
             return f"{self.listener}: default_backend → {self.target_pool}"
         if self.action_type == LBRoutingActionTypeChoices.REDIRECT:
             return f"{self.listener}: redirect {self.redirect_rule}"
+        if self.action_type == LBRoutingActionTypeChoices.SET_PATH_REQUEST:
+            return f"{self.listener}: set-path {self.set_path} if {self.match_type} {self.pattern}"
         return f"{self.listener}: {self.action_type} {self.header_name}={self.header_value}"
 
     def clean(self):
@@ -112,6 +123,11 @@ class LBRoutingRule(NetBoxModel):
         elif self.action_type == LBRoutingActionTypeChoices.REDIRECT:
             if not self.redirect_rule:
                 raise ValidationError({"redirect_rule": "Required for a redirect action."})
+        elif self.action_type == LBRoutingActionTypeChoices.SET_PATH_REQUEST:
+            if not self.set_path:
+                raise ValidationError({"set_path": "Required for a set-path action."})
+            if not self.match_type:
+                raise ValidationError({"match_type": "Required for a set-path action (scope the rewrite to a host/path)."})
         else:  # set-header request/response
             if not self.header_name:
                 raise ValidationError({"header_name": "Required for a set-header action."})

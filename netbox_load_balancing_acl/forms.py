@@ -23,6 +23,7 @@ class LBRoutingRuleForm(NetBoxModelForm):
         FieldSet("target_pool", name="Backend (use_backend)"),
         FieldSet("header_name", "header_value", name="Header (set-header)"),
         FieldSet("redirect_rule", name="Redirect"),
+        FieldSet("set_path", name="Rewrite (set-path)"),
     )
 
     class Meta:
@@ -40,6 +41,7 @@ class LBRoutingRuleForm(NetBoxModelForm):
             "header_name",
             "header_value",
             "redirect_rule",
+            "set_path",
             "tags",
         ]
 
