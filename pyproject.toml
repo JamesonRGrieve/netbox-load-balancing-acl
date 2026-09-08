@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netbox-load-balancing-acl"
-version = "0.0.6"
+version = "0.0.7"
 description = "Host/SNI/path → backend-pool routing rules (HAProxy ACLs) for netbox_load_balancing"
 readme = "README.md"
 requires-python = ">=3.10"
