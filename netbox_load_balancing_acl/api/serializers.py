@@ -119,6 +119,8 @@ class LBMemberHASerializer(NetBoxModelSerializer):
             "display",
             "assignment",
             "backup",
+            "ssl_client_cert",
+            "ssl_verify",
             "description",
             "tags",
             "custom_fields",

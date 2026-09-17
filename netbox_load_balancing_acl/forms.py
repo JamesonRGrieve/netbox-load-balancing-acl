@@ -114,11 +114,14 @@ class LBMemberHAForm(NetBoxModelForm):
         label="Member assignment",
     )
 
-    fieldsets = (FieldSet("assignment", "backup", "description", name="HA role"),)
+    fieldsets = (
+        FieldSet("assignment", "backup", "description", name="HA role"),
+        FieldSet("ssl_client_cert", "ssl_verify", name="Backend mTLS (authenticated origin)"),
+    )
 
     class Meta:
         model = LBMemberHA
-        fields = ["assignment", "backup", "description", "tags"]
+        fields = ["assignment", "backup", "ssl_client_cert", "ssl_verify", "description", "tags"]
 
 
 class LBMemberHAFilterForm(NetBoxModelFilterSetForm):

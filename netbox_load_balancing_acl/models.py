@@ -274,6 +274,21 @@ class LBMemberHA(NetBoxModel):
         help_text="Serve only when every non-backup member of the pool is down (HAProxy "
         "`backup`). A member with no LBMemberHA row is active.",
     )
+    ssl_client_cert = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="OPNsense trust-store refid of the client certificate this server presents "
+        "for mTLS to an authenticated origin (HAProxy `crt` — e.g. the omg-edge→house "
+        "Receiver Authenticated-Origin-Pull failover forward, CLOUDFLARE_LB.md §2133). "
+        "Blank = present no client cert (unchanged behaviour).",
+    )
+    ssl_verify = models.BooleanField(
+        default=True,
+        help_text="Verify the backend server's TLS certificate (HAProxy `verify required` vs "
+        "`verify none`). Only consulted when this server presents a client cert / is ssl; "
+        "the device emits it alongside sslClientCertificate.",
+    )
     description = models.CharField(
         max_length=200,
         blank=True,
