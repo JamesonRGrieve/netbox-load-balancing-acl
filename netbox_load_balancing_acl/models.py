@@ -8,6 +8,7 @@ scheme redirects) carry no ACL/pool — modeling them natively lets an adopted f
 reproduce its whole action array at 0-diff instead of dropping the non-routing actions."""
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 from netbox.models import NetBoxModel
@@ -288,6 +289,17 @@ class LBMemberHA(NetBoxModel):
         help_text="Verify the backend server's TLS certificate (HAProxy `verify required` vs "
         "`verify none`). Only consulted when this server presents a client cert / is ssl; "
         "the device emits it alongside sslClientCertificate.",
+    )
+    member_port = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Override the backend port for THIS server only (HAProxy `<ip>:<port>`). The "
+        "netbox-load-balancing base plugin has a single Pool.member_port for every member; a "
+        "standby that forwards to a different port than the pool's primaries sets it here — e.g. "
+        "the §2133 omg-edge→house Receiver mTLS failover, where the primary WordPress members are "
+        ":80 but the house-edge backup must reach the mTLS Receiver on :443. Null = use the pool's "
+        "member_port (unchanged behaviour).",
     )
     description = models.CharField(
         max_length=200,

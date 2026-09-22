@@ -287,3 +287,21 @@ class LBMemberHAModelTest(TestCase):
         ha = LBMemberHA(assignment=make_assignment(monitor, self.mirror))
         with self.assertRaises(ValidationError):
             ha.clean()
+
+    def test_member_port_defaults_null(self):
+        # Absent override => fall back to the pool's member_port (unchanged behaviour).
+        ha = LBMemberHA.objects.create(assignment=self.mirror_assignment)
+        ha.full_clean()
+        self.assertIsNone(ha.member_port)
+
+    def test_member_port_override_accepted(self):
+        # §2133: the house-edge backup forwards to the mTLS Receiver on :443 while the
+        # pool's primary WordPress members stay :80.
+        ha = LBMemberHA.objects.create(assignment=self.mirror_assignment, member_port=443)
+        ha.full_clean()
+        self.assertEqual(LBMemberHA.objects.get(pk=ha.pk).member_port, 443)
+
+    def test_member_port_out_of_range_rejected(self):
+        ha = LBMemberHA(assignment=self.mirror_assignment, member_port=70000)
+        with self.assertRaises(ValidationError):
+            ha.full_clean()

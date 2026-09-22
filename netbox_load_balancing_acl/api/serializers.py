@@ -121,6 +121,7 @@ class LBMemberHASerializer(NetBoxModelSerializer):
             "backup",
             "ssl_client_cert",
             "ssl_verify",
+            "member_port",
             "description",
             "tags",
             "custom_fields",
