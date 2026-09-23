@@ -60,6 +60,6 @@ class LBBackendTuningViewSet(NetBoxModelViewSet):
 
 
 class LBFrontendTuningViewSet(NetBoxModelViewSet):
-    queryset = LBFrontendTuning.objects.prefetch_related("listener", "tags")
+    queryset = LBFrontendTuning.objects.prefetch_related("listener", "client_auth_cas", "tags")
     serializer_class = LBFrontendTuningSerializer
     filterset_class = filtersets.LBFrontendTuningFilterSet

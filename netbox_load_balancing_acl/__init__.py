@@ -26,7 +26,7 @@ class NetBoxLoadBalancingACLConfig(PluginConfig):
     base_url = "lb-acl"
     min_version = "4.6.0"
     max_version = "4.6.99"
-    required_plugins = ["netbox_load_balancing"]
+    required_plugins = ["netbox_load_balancing", "netbox_pki"]
 
     def ready(self):
         super().ready()

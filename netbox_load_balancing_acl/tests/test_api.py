@@ -5,6 +5,8 @@ Composes the explicit CRUD mixins (not the GraphQL-inclusive APIViewTestCase) si
 ships no GraphQL type yet. Each created rule needs a fresh listener so the (listener, order)
 uniqueness constraint never trips inside the create batch; pools are real Pool rows."""
 
+import unittest
+
 from django.contrib.contenttypes.models import ContentType
 from ipam.models import IPAddress
 from netbox_load_balancing.models import (
@@ -15,7 +17,8 @@ from netbox_load_balancing.models import (
     Pool,
 )
 from utilities.testing import APIViewTestCases
-from netbox_load_balancing_acl.models import LBAcl, LBMemberHA, LBRoutingRule
+from netbox_load_balancing_acl.models import LBAcl, LBFrontendTuning, LBMemberHA, LBRoutingRule
+from netbox_pki.models import PkiCertificateAuthority
 
 
 def _listener(name):
@@ -33,16 +36,26 @@ def _assignment(pool, name, address):
     )
 
 
-# Inherit the CRUD mixins directly: an intermediate mixin class is itself discovered
-# by the test loader and run with model=None. Compose on the concrete test case so only
-# this (model-bound) class is collected.
-class LBRoutingRuleAPITest(
+class _CRUD(
     APIViewTestCases.GetObjectViewTestCase,
     APIViewTestCases.ListObjectsViewTestCase,
     APIViewTestCases.CreateObjectViewTestCase,
     APIViewTestCases.UpdateObjectViewTestCase,
     APIViewTestCases.DeleteObjectViewTestCase,
 ):
+    # Plugin API views register under `plugins-api:<app_label>-api`; without this the test
+    # base reverses `<app_label>-api:…` → NoReverseMatch. See utilities/testing/api.py.
+    view_namespace = "plugins-api:netbox_load_balancing_acl"
+
+    @classmethod
+    def setUpClass(cls):
+        # The loader also collects this abstract base; skip it (it has no model).
+        if cls is _CRUD:
+            raise unittest.SkipTest("abstract API test base")
+        super().setUpClass()
+
+
+class LBRoutingRuleAPITest(_CRUD):
     model = LBRoutingRule
     brief_fields = ["action_type", "display", "id", "listener", "order", "url"]
     bulk_update_data = {"negate": True}
@@ -104,13 +117,7 @@ class LBRoutingRuleAPITest(
         ]
 
 
-class LBAclAPITest(
-    APIViewTestCases.GetObjectViewTestCase,
-    APIViewTestCases.ListObjectsViewTestCase,
-    APIViewTestCases.CreateObjectViewTestCase,
-    APIViewTestCases.UpdateObjectViewTestCase,
-    APIViewTestCases.DeleteObjectViewTestCase,
-):
+class LBAclAPITest(_CRUD):
     model = LBAcl
     brief_fields = ["display", "id", "listener", "name", "order", "url"]
     bulk_update_data = {"negate": True}
@@ -131,13 +138,7 @@ class LBAclAPITest(
         ]
 
 
-class LBMemberHAAPITest(
-    APIViewTestCases.GetObjectViewTestCase,
-    APIViewTestCases.ListObjectsViewTestCase,
-    APIViewTestCases.CreateObjectViewTestCase,
-    APIViewTestCases.UpdateObjectViewTestCase,
-    APIViewTestCases.DeleteObjectViewTestCase,
-):
+class LBMemberHAAPITest(_CRUD):
     model = LBMemberHA
     brief_fields = ["assignment", "backup", "display", "id", "url"]
     bulk_update_data = {"backup": False}
@@ -160,4 +161,26 @@ class LBMemberHAAPITest(
                 "description": "house mirror",
             },
             {"assignment": _assignment(pool, "new2", "198.18.0.22/24").pk, "backup": False},
+        ]
+
+
+class LBFrontendTuningAPITest(_CRUD):
+    model = LBFrontendTuning
+    brief_fields = ["display", "id", "listener", "url"]
+    bulk_update_data = {"custom_options": "option redispatch"}
+
+    @classmethod
+    def setUpTestData(cls):
+        cas = [
+            PkiCertificateAuthority.objects.create(name=f"ca{i}", ca_type="external", trust_refid=f"6a9ac549cc8d{i}")
+            for i in range(2)
+        ]
+        LBFrontendTuning.objects.bulk_create(
+            [LBFrontendTuning(listener=_listener(f"ft-ex{i}")) for i in range(3)]
+        )
+        # A one-to-one per listener, so every created object needs its own listener.
+        cls.create_data = [
+            {"listener": _listener("ft-new0").pk, "custom_options": "option redispatch"},
+            {"listener": _listener("ft-new1").pk, "client_auth_cas": [cas[0].pk, cas[1].pk]},
+            {"listener": _listener("ft-new2").pk, "client_auth_cas": [cas[1].pk]},
         ]

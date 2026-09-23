@@ -13,8 +13,14 @@ from netbox_load_balancing.models import (
     Pool,
 )
 from netbox_load_balancing_acl.choices import LBRoutingMatchTypeChoices
-from netbox_load_balancing_acl.filtersets import LBMemberHAFilterSet, LBRoutingRuleFilterSet
-from netbox_load_balancing_acl.models import LBMemberHA, LBRoutingRule
+from netbox_load_balancing_acl.filtersets import (
+    LBFrontendTuningFilterSet,
+    LBMemberHAFilterSet,
+    LBRoutingRuleFilterSet,
+)
+from netbox_load_balancing_acl.models import LBFrontendTuning, LBMemberHA, LBRoutingRule
+from netbox_pki.choices import CATypeChoices
+from netbox_pki.models import PkiCertificateAuthority
 
 
 def _listener(name):
@@ -126,3 +132,20 @@ class LBMemberHAFilterSetTest(TestCase):
     def test_search_member_name_and_description(self):
         self.assertEqual(LBMemberHAFilterSet({"q": "parker"}, self.queryset).qs.count(), 1)
         self.assertEqual(LBMemberHAFilterSet({"q": "house mirror"}, self.queryset).qs.count(), 1)
+
+
+class LBFrontendTuningFilterSetTest(TestCase):
+    queryset = LBFrontendTuning.objects.all()
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.failover = PkiCertificateAuthority.objects.create(
+            name="omg-edge-failover CA 2026", ca_type=CATypeChoices.SELF_SIGNED, trust_refid="0e2133fa11ca0"
+        )
+        cls.receiver = LBFrontendTuning.objects.create(listener=_listener("https"))
+        cls.receiver.client_auth_cas.add(cls.failover)
+        LBFrontendTuning.objects.create(listener=_listener("http"))
+
+    def test_client_auth_ca_id(self):
+        qs = LBFrontendTuningFilterSet({"client_auth_ca_id": [self.failover.pk]}, self.queryset).qs
+        self.assertEqual(list(qs), [self.receiver])

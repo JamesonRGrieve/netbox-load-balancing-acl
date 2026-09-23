@@ -26,7 +26,9 @@ from netbox_load_balancing_acl.choices import (
     LBRoutingActionTypeChoices,
     LBRoutingMatchTypeChoices,
 )
-from netbox_load_balancing_acl.models import LBAcl, LBMemberHA, LBRoutingRule
+from netbox_load_balancing_acl.models import LBAcl, LBFrontendTuning, LBMemberHA, LBRoutingRule
+from netbox_pki.choices import CATypeChoices
+from netbox_pki.models import PkiCertificateAuthority
 
 
 def make_listener(name="fe"):
@@ -305,3 +307,42 @@ class LBMemberHAModelTest(TestCase):
         ha = LBMemberHA(assignment=self.mirror_assignment, member_port=70000)
         with self.assertRaises(ValidationError):
             ha.full_clean()
+
+
+class LBFrontendTuningClientAuthModelTest(TestCase):
+    """The §2133 house Receiver: its frontend trusts the Cloudflare origin-pull CAs plus the
+    omg-edge-failover CA, referenced on the device by each CA's trust_refid."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.cf = PkiCertificateAuthority.objects.create(
+            name="cf-origin-pull", ca_type=CATypeChoices.EXTERNAL, trust_refid="6a9ac549cc8d0"
+        )
+        cls.failover = PkiCertificateAuthority.objects.create(
+            name="omg-edge-failover CA 2026", ca_type=CATypeChoices.SELF_SIGNED, trust_refid="0e2133fa11ca0"
+        )
+
+    def test_client_auth_cas_default_empty(self):
+        tuning = LBFrontendTuning.objects.create(listener=make_listener("plain"))
+        tuning.full_clean()
+        self.assertFalse(tuning.client_auth_cas.exists())
+
+    def test_client_auth_cas_saved(self):
+        tuning = LBFrontendTuning.objects.create(listener=make_listener("receiver"))
+        tuning.client_auth_cas.set([self.cf, self.failover])
+        tuning.full_clean()
+        stored = LBFrontendTuning.objects.get(pk=tuning.pk)
+        self.assertEqual(
+            sorted(stored.client_auth_cas.values_list("trust_refid", flat=True)), ["0e2133fa11ca0", "6a9ac549cc8d0"]
+        )
+
+    def test_deleting_ca_drops_only_the_link(self):
+        tuning = LBFrontendTuning.objects.create(listener=make_listener("drop"))
+        tuning.client_auth_cas.set([self.cf, self.failover])
+        self.failover.delete()
+        self.assertEqual(list(LBFrontendTuning.objects.get(pk=tuning.pk).client_auth_cas.all()), [self.cf])
+
+    def test_reverse_accessor_from_ca(self):
+        tuning = LBFrontendTuning.objects.create(listener=make_listener("rev"))
+        tuning.client_auth_cas.add(self.cf)
+        self.assertEqual(list(self.cf.lb_frontend_tunings.all()), [tuning])

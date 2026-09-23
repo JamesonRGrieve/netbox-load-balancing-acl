@@ -489,6 +489,14 @@ class LBFrontendTuning(NetBoxModel):
         help_text="Raw HAProxy config lines injected into the frontend (pass-thru). "
         "One line per option.",
     )
+    client_auth_cas = models.ManyToManyField(
+        "netbox_pki.PkiCertificateAuthority",
+        blank=True,
+        related_name="lb_frontend_tunings",
+        help_text="CAs the frontend trusts for client-certificate (mTLS) auth, referenced on the "
+        "device by each CA's trust_refid. Empty = the frontend's CA list stays live-managed. "
+        "The verification policy is the listener's ssl_client_auth_verify custom field.",
+    )
 
     class Meta:
         ordering = ["listener"]

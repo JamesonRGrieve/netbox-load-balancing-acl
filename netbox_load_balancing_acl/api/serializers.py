@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from netbox.api.fields import SerializedPKRelatedField
 from netbox.api.serializers import NetBoxModelSerializer
+from netbox_pki.api.serializers import PkiCertificateAuthoritySerializer
+from netbox_pki.models import PkiCertificateAuthority
 from netbox_load_balancing.api.serializers import (
     HealthMonitorSerializer,
     ListenerSerializer,
@@ -191,6 +194,13 @@ class LBFrontendTuningSerializer(NetBoxModelSerializer):
         view_name="plugins-api:netbox_load_balancing_acl-api:lbfrontendtuning-detail"
     )
     listener = ListenerSerializer(nested=True)
+    client_auth_cas = SerializedPKRelatedField(
+        queryset=PkiCertificateAuthority.objects.all(),
+        serializer=PkiCertificateAuthoritySerializer,
+        nested=True,
+        required=False,
+        many=True,
+    )
 
     class Meta:
         model = LBFrontendTuning
@@ -200,6 +210,7 @@ class LBFrontendTuningSerializer(NetBoxModelSerializer):
             "display",
             "listener",
             "custom_options",
+            "client_auth_cas",
             "tags",
             "custom_fields",
             "created",

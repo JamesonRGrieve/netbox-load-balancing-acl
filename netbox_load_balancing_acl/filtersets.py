@@ -3,6 +3,7 @@ import django_filters
 from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
 from netbox_load_balancing.models import HealthMonitor, Listener, Member, MemberAssignment, Pool
+from netbox_pki.models import PkiCertificateAuthority
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
 from .models import (
     LBAcl,
@@ -136,6 +137,9 @@ class LBBackendTuningFilterSet(NetBoxModelFilterSet):
 class LBFrontendTuningFilterSet(NetBoxModelFilterSet):
     listener_id = django_filters.ModelMultipleChoiceFilter(
         field_name="listener", queryset=Listener.objects.all(), label="Listener (ID)"
+    )
+    client_auth_ca_id = django_filters.ModelMultipleChoiceFilter(
+        field_name="client_auth_cas", queryset=PkiCertificateAuthority.objects.all(), label="Client-auth CA (ID)"
     )
 
     class Meta:
