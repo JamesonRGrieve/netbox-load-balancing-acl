@@ -15,6 +15,12 @@ from netbox.models import NetBoxModel
 
 from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
 
+# Cloudflare's proxy read timeout is fixed (100 s, non-Enterprise). Every edge request timeout
+# defaults to 1 s past it and may not be set at or below it, so Cloudflare is always the party
+# that gives up on a slow request — never the edge (operator directive 2026-10-08).
+CLOUDFLARE_ORIGIN_TIMEOUT_SECONDS = 100
+EDGE_REQUEST_TIMEOUT_SECONDS = CLOUDFLARE_ORIGIN_TIMEOUT_SECONDS + 1
+
 
 class LBRoutingRule(NetBoxModel):
     """One HAProxy frontend action (use_backend host-route, header rewrite, or redirect)."""
@@ -454,6 +460,12 @@ class LBBackendTuning(NetBoxModel):
         help_text="Auto-generate a no-health-check clone backend + nbsrv() frontend ACL "
         "so traffic is attempted even when all servers are down (never 503).",
     )
+    timeout_server = models.PositiveIntegerField(
+        default=EDGE_REQUEST_TIMEOUT_SECONDS,
+        validators=[MinValueValidator(EDGE_REQUEST_TIMEOUT_SECONDS)],
+        help_text="Seconds to wait for a backend response (HAProxy `timeout server`). Must exceed "
+        "Cloudflare's fixed origin timeout so the edge never cuts a request first.",
+    )
 
     class Meta:
         ordering = ["pool"]
@@ -496,6 +508,12 @@ class LBFrontendTuning(NetBoxModel):
         help_text="CAs the frontend trusts for client-certificate (mTLS) auth, referenced on the "
         "device by each CA's trust_refid. Empty = the frontend's CA list stays live-managed. "
         "The verification policy is the listener's ssl_client_auth_verify custom field.",
+    )
+    timeout_client = models.PositiveIntegerField(
+        default=EDGE_REQUEST_TIMEOUT_SECONDS,
+        validators=[MinValueValidator(EDGE_REQUEST_TIMEOUT_SECONDS)],
+        help_text="Seconds a client connection may stay inactive (HAProxy `timeout client`). Must "
+        "exceed Cloudflare's fixed origin timeout so the edge never cuts a request first.",
     )
 
     class Meta:

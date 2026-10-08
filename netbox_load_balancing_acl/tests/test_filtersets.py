@@ -142,9 +142,10 @@ class LBFrontendTuningFilterSetTest(TestCase):
         cls.failover = PkiCertificateAuthority.objects.create(
             name="omg-edge-failover CA 2026", ca_type=CATypeChoices.SELF_SIGNED, trust_refid="0e2133fa11ca0"
         )
-        cls.receiver = LBFrontendTuning.objects.create(listener=_listener("https"))
+        # Listeners get their tuning row on creation (signals.py).
+        cls.receiver = _listener("https").tuning
         cls.receiver.client_auth_cas.add(cls.failover)
-        LBFrontendTuning.objects.create(listener=_listener("http"))
+        _listener("http")
 
     def test_client_auth_ca_id(self):
         qs = LBFrontendTuningFilterSet({"client_auth_ca_id": [self.failover.pk]}, self.queryset).qs

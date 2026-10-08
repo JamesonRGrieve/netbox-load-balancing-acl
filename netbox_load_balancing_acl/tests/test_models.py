@@ -7,6 +7,9 @@ LBMemberHA is exercised against real Member / Pool / MemberAssignment rows — t
 off the assignment (the server line), so the tests assert the one-to-one, the CASCADE from the
 assignment, and that clean() refuses a health-monitor assignment."""
 
+import importlib
+
+from django.apps import apps as django_apps
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -26,7 +29,15 @@ from netbox_load_balancing_acl.choices import (
     LBRoutingActionTypeChoices,
     LBRoutingMatchTypeChoices,
 )
-from netbox_load_balancing_acl.models import LBAcl, LBFrontendTuning, LBMemberHA, LBRoutingRule
+from netbox_load_balancing_acl.models import (
+    CLOUDFLARE_ORIGIN_TIMEOUT_SECONDS,
+    EDGE_REQUEST_TIMEOUT_SECONDS,
+    LBAcl,
+    LBBackendTuning,
+    LBFrontendTuning,
+    LBMemberHA,
+    LBRoutingRule,
+)
 from netbox_pki.choices import CATypeChoices
 from netbox_pki.models import PkiCertificateAuthority
 
@@ -323,12 +334,12 @@ class LBFrontendTuningClientAuthModelTest(TestCase):
         )
 
     def test_client_auth_cas_default_empty(self):
-        tuning = LBFrontendTuning.objects.create(listener=make_listener("plain"))
+        tuning = make_listener("plain").tuning
         tuning.full_clean()
         self.assertFalse(tuning.client_auth_cas.exists())
 
     def test_client_auth_cas_saved(self):
-        tuning = LBFrontendTuning.objects.create(listener=make_listener("receiver"))
+        tuning = make_listener("receiver").tuning
         tuning.client_auth_cas.set([self.cf, self.failover])
         tuning.full_clean()
         stored = LBFrontendTuning.objects.get(pk=tuning.pk)
@@ -337,12 +348,67 @@ class LBFrontendTuningClientAuthModelTest(TestCase):
         )
 
     def test_deleting_ca_drops_only_the_link(self):
-        tuning = LBFrontendTuning.objects.create(listener=make_listener("drop"))
+        tuning = make_listener("drop").tuning
         tuning.client_auth_cas.set([self.cf, self.failover])
         self.failover.delete()
         self.assertEqual(list(LBFrontendTuning.objects.get(pk=tuning.pk).client_auth_cas.all()), [self.cf])
 
     def test_reverse_accessor_from_ca(self):
-        tuning = LBFrontendTuning.objects.create(listener=make_listener("rev"))
+        tuning = make_listener("rev").tuning
         tuning.client_auth_cas.add(self.cf)
         self.assertEqual(list(self.cf.lb_frontend_tunings.all()), [tuning])
+
+
+class EdgeRequestTimeoutTest(TestCase):
+    """Edge timeouts are NetBox intent with a default 1 s past Cloudflare's fixed origin timeout:
+    every pool/listener gets a tuning row automatically, and nothing may be set at or below
+    Cloudflare's timeout (the edge must never cut a request first)."""
+
+    def test_new_pool_gets_backend_tuning_with_default(self):
+        tuning = LBBackendTuning.objects.get(pool=make_pool("auto-pool"))
+        self.assertEqual(tuning.timeout_server, CLOUDFLARE_ORIGIN_TIMEOUT_SECONDS + 1)
+        self.assertEqual(tuning.timeout_server, EDGE_REQUEST_TIMEOUT_SECONDS)
+
+    def test_new_listener_gets_frontend_tuning_with_default(self):
+        tuning = LBFrontendTuning.objects.get(listener=make_listener("auto-fe"))
+        self.assertEqual(tuning.timeout_client, EDGE_REQUEST_TIMEOUT_SECONDS)
+
+    def test_timeouts_at_or_below_cloudflare_rejected(self):
+        backend = make_pool("bad-pool").tuning
+        backend.timeout_server = CLOUDFLARE_ORIGIN_TIMEOUT_SECONDS
+        with self.assertRaises(ValidationError):
+            backend.full_clean()
+        frontend = make_listener("bad-fe").tuning
+        frontend.timeout_client = 30
+        with self.assertRaises(ValidationError):
+            frontend.full_clean()
+
+    def test_longer_override_allowed(self):
+        backend = make_pool("slow-pool").tuning
+        backend.timeout_server = 300
+        backend.full_clean()
+        backend.save()
+        self.assertEqual(LBBackendTuning.objects.get(pk=backend.pk).timeout_server, 300)
+
+    def test_saving_existing_pool_does_not_duplicate_tuning(self):
+        pool = make_pool("resave")
+        pool.description = "edited"
+        pool.save()
+        self.assertEqual(LBBackendTuning.objects.filter(pool=pool).count(), 1)
+
+    def test_backfill_creates_rows_only_where_missing(self):
+        # Pools/listeners that predate the signal (rows removed here to simulate them) are
+        # backfilled by migration 0013 with the default; existing rows are left untouched.
+        untuned_pool = make_pool("legacy-pool")
+        untuned_fe = make_listener("legacy-fe")
+        LBBackendTuning.objects.filter(pool=untuned_pool).delete()
+        LBFrontendTuning.objects.filter(listener=untuned_fe).delete()
+        kept = make_pool("kept-pool").tuning
+        kept.timeout_server = 200
+        kept.save()
+        migration = importlib.import_module("netbox_load_balancing_acl.migrations.0013_edge_request_timeouts")
+        migration.backfill_tuning_rows(django_apps, None)
+        self.assertEqual(LBBackendTuning.objects.get(pool=untuned_pool).timeout_server, EDGE_REQUEST_TIMEOUT_SECONDS)
+        self.assertEqual(LBFrontendTuning.objects.get(listener=untuned_fe).timeout_client, EDGE_REQUEST_TIMEOUT_SECONDS)
+        self.assertEqual(LBBackendTuning.objects.get(pk=kept.pk).timeout_server, 200)
+        self.assertEqual(LBBackendTuning.objects.filter(pool=untuned_pool).count(), 1)

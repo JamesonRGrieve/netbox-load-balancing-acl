@@ -50,5 +50,9 @@ class NetBoxLoadBalancingACLConfig(PluginConfig):
             if model is not None and not model._meta.ordering:
                 model._meta.ordering = ("pk",)
 
+        from . import signals
+
+        signals.register()
+
 
 config = NetBoxLoadBalancingACLConfig

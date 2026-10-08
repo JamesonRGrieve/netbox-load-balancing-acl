@@ -175,12 +175,15 @@ class LBFrontendTuningAPITest(_CRUD):
             PkiCertificateAuthority.objects.create(name=f"ca{i}", ca_type="external", trust_refid=f"6a9ac549cc8d{i}")
             for i in range(2)
         ]
-        LBFrontendTuning.objects.bulk_create(
-            [LBFrontendTuning(listener=_listener(f"ft-ex{i}")) for i in range(3)]
-        )
-        # A one-to-one per listener, so every created object needs its own listener.
+        # Creating a listener auto-creates its tuning row (signals.py), so these three exist.
+        for i in range(3):
+            _listener(f"ft-ex{i}")
+        # A one-to-one per listener, so every created object needs its own listener — and one
+        # with no tuning row yet, so drop the auto-created rows to exercise the API CREATE path.
+        new = [_listener(f"ft-new{i}") for i in range(3)]
+        LBFrontendTuning.objects.filter(listener__in=new).delete()
         cls.create_data = [
-            {"listener": _listener("ft-new0").pk, "custom_options": "option redispatch"},
-            {"listener": _listener("ft-new1").pk, "client_auth_cas": [cas[0].pk, cas[1].pk]},
-            {"listener": _listener("ft-new2").pk, "client_auth_cas": [cas[1].pk]},
+            {"listener": new[0].pk, "custom_options": "option redispatch"},
+            {"listener": new[1].pk, "client_auth_cas": [cas[0].pk, cas[1].pk]},
+            {"listener": new[2].pk, "client_auth_cas": [cas[1].pk], "timeout_client": 120},
         ]
