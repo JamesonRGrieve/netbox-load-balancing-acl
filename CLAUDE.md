@@ -114,4 +114,4 @@ latest migration so both target tables exist before `LBRoutingRule` is created.
 ---
 
 ## Licensing
-- **AGPL-3.0-or-later** (workspace production-IaC standard). SPDX header in every file.
+- **AGPL-3.0-or-later**, SPDX header in every file (SOP → *Code Quality and Testing*).
