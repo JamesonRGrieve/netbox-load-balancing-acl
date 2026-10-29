@@ -19,10 +19,13 @@ plugin is never modified — each model is a satellite FK-ing into it.
 ### `LBRoutingRule` — one HAProxy frontend action
 
 A `use_backend` host/SNI/path route, a `default_backend` catch-all, a request/response
-`set-header`, or a `redirect`. FKs a `Listener` (CASCADE) and, for the backend-selecting actions,
+`set-header`, a `redirect`, a request `set-path`, or an `http-request return` (the edge answers a
+matched request itself from `return_status`/`return_content_type`/`return_body`, e.g. an MTA-STS
+policy; the body is rendered as one quoted HAProxy string with newlines as `\n`). FKs a `Listener` (CASCADE) and, for the backend-selecting actions,
 a `Pool` (PROTECT). `order` positions it in the frontend's action array; `(listener, order)` is
 unique. `clean()` enforces the per-action-type requirements (a `use_backend` needs a pool and a
-match; a `redirect` needs a rule; a `set-header` needs a name).
+match; a `redirect` needs a rule; a `set-header` needs a name; a `set-path` and a `return` need a
+match, and a `return` a content type, a body and an HTTP status).
 
 ### `LBAcl` — one HAProxy frontend ACL condition
 

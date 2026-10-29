@@ -29,6 +29,8 @@ class LBRoutingRuleTable(NetBoxTable):
             "header_value",
             "redirect_rule",
             "set_path",
+            "return_status",
+            "return_content_type",
             "tags",
             "created",
             "last_updated",

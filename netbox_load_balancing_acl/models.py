@@ -96,6 +96,19 @@ class LBRoutingRule(NetBoxModel):
         "(match_type/pattern) so only the intended host is rewritten.",
     )
 
+    # ── http-request return: the edge answers itself (status, content type, body) ──
+    return_status = models.PositiveSmallIntegerField(
+        default=200, help_text="HTTP status of an http-request return action."
+    )
+    return_content_type = models.CharField(
+        max_length=128, blank=True, help_text='Content-Type of an http-request return action, e.g. "text/plain".'
+    )
+    return_body = models.TextField(
+        blank=True,
+        help_text="Body of an http-request return action (e.g. an MTA-STS policy). Rendered as one quoted "
+        "HAProxy string: newlines become \\n, so keep it small.",
+    )
+
     class Meta:
         ordering = ["listener", "order"]
         verbose_name = "LB Routing Rule"
@@ -114,6 +127,8 @@ class LBRoutingRule(NetBoxModel):
             return f"{self.listener}: redirect {self.redirect_rule}"
         if self.action_type == LBRoutingActionTypeChoices.SET_PATH_REQUEST:
             return f"{self.listener}: set-path {self.set_path} if {self.match_type} {self.pattern}"
+        if self.action_type == LBRoutingActionTypeChoices.RETURN_REQUEST:
+            return f"{self.listener}: return {self.return_status} if {self.match_type} {self.pattern}"
         return f"{self.listener}: {self.action_type} {self.header_name}={self.header_value}"
 
     def clean(self):
@@ -135,6 +150,13 @@ class LBRoutingRule(NetBoxModel):
                 raise ValidationError({"set_path": "Required for a set-path action."})
             if not self.match_type:
                 raise ValidationError({"match_type": "Required for a set-path action (scope the rewrite to a host/path)."})
+        elif self.action_type == LBRoutingActionTypeChoices.RETURN_REQUEST:
+            if not self.match_type:
+                raise ValidationError({"match_type": "Required for a return action (scope the answer to a host/path)."})
+            if not self.return_content_type or not self.return_body:
+                raise ValidationError({"return_body": "A return action needs a content type and a body."})
+            if not 100 <= self.return_status <= 599:
+                raise ValidationError({"return_status": "Must be an HTTP status (100-599)."})
         else:  # set-header request/response
             if not self.header_name:
                 raise ValidationError({"header_name": "Required for a set-header action."})

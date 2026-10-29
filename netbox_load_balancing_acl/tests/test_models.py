@@ -194,6 +194,26 @@ class LBRoutingRuleModelTest(TestCase):
         with self.assertRaises(ValidationError):
             r.clean()
 
+    def test_clean_return_requires_match_type_and_body(self):
+        r = LBRoutingRule(
+            listener=self.listener, action_type=LBRoutingActionTypeChoices.RETURN_REQUEST, order=15,
+            return_content_type="text/plain", return_body="version: STSv1\n",
+        )
+        with self.assertRaises(ValidationError):
+            r.clean()  # no match_type
+        r.match_type, r.pattern = "host", "mta-sts.example.com"
+        r.return_body = ""
+        with self.assertRaises(ValidationError):
+            r.clean()  # no body
+        r.return_body = "version: STSv1\nmode: testing\n"
+        r.return_status = 999
+        with self.assertRaises(ValidationError):
+            r.clean()  # not an HTTP status
+        r.return_status = 200
+        r.clean()
+        r.save()
+        self.assertIn("return 200 if host mta-sts.example.com", str(r))
+
     def test_clean_set_header_requires_name(self):
         r = LBRoutingRule(
             listener=self.listener,

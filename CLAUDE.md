@@ -84,6 +84,8 @@ mount `pools`, 1-per-backend — NOT `VirtualIPPool`, which is the frontend VIP 
     at `virtual-pools` — the original FK conflated the two).
   - `order` — evaluation order (lower first).
   - `negate` — invert the match.
+  - `return_status` / `return_content_type` / `return_body` — the answer of an `http-request_return`
+    action (`clean()`: a match, a content type, a body, status 100-599).
   - `UniqueConstraint(listener, order)` — one rule per evaluation slot per listener.
 
 `listener` CASCADEs (drop the frontend, its ACLs go); `target_pool` is PROTECT (a referenced pool

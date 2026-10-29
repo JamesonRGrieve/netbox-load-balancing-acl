@@ -24,6 +24,7 @@ class LBRoutingRuleForm(NetBoxModelForm):
         FieldSet("header_name", "header_value", name="Header (set-header)"),
         FieldSet("redirect_rule", name="Redirect"),
         FieldSet("set_path", name="Rewrite (set-path)"),
+        FieldSet("return_status", "return_content_type", "return_body", name="Answer (http-request return)"),
     )
 
     class Meta:
@@ -42,6 +43,9 @@ class LBRoutingRuleForm(NetBoxModelForm):
             "header_value",
             "redirect_rule",
             "set_path",
+            "return_status",
+            "return_content_type",
+            "return_body",
             "tags",
         ]
 
