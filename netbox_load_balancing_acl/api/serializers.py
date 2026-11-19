@@ -74,6 +74,8 @@ class LBRoutingRuleSerializer(NetBoxModelSerializer):
             "header_value",
             "redirect_rule",
             "set_path",
+            "path_scope",
+            "exclude_paths",
             "return_status",
             "return_content_type",
             "return_body",

@@ -60,3 +60,18 @@ class LBRoutingActionTypeChoices(ChoiceSet):
         (SET_PATH_REQUEST, "Rewrite request path (set-path)", "indigo"),
         (RETURN_REQUEST, "Answer from the edge (http-request return)", "purple"),
     ]
+
+
+class LBRoutingPathScopeChoices(ChoiceSet):
+    """Which request paths a set-path action rewrites.
+
+    ``root`` fires only on ``/`` (the adapter's shared ``<fe>_spath_root`` ACL; every rule made
+    before 0015). ``all`` fires on every path not in ``exclude_paths``, so ``set_path`` carries an
+    HAProxy fmt such as ``/Org%[path]`` (a vanity host prefixing an org path)."""
+
+    ROOT = "root"
+    ALL = "all"
+    CHOICES = [
+        (ROOT, "Root path only", "blue"),
+        (ALL, "Every path", "orange"),
+    ]

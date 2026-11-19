@@ -27,6 +27,12 @@ unique. `clean()` enforces the per-action-type requirements (a `use_backend` nee
 match; a `redirect` needs a rule; a `set-header` needs a name; a `set-path` and a `return` need a
 match, and a `return` a content type, a body and an HTTP status).
 
+A `set-path` has a `path_scope`: `root` (default; only `/`, every rule made before migration 0015) or
+`all` (every path, so `set_path` must carry `%[path]`, e.g. `/Org%[path]` for a vanity host), and an
+`all` rewrite may list `exclude_paths` (path prefixes left untouched; each starts with `/`, no
+whitespace since HAProxy `path_beg` splits on spaces, no duplicates). Other action types keep both at
+their defaults.
+
 ### `LBAcl` — one HAProxy frontend ACL condition
 
 The `ha_acls` array entries, modeled per-position because an ACL name is **not** unique: pfSense

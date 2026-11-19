@@ -9,6 +9,7 @@ class LBRoutingRuleTable(NetBoxTable):
     target_pool = tables.Column(linkify=True)
     action_type = columns.ChoiceFieldColumn()
     match_type = columns.ChoiceFieldColumn()
+    path_scope = columns.ChoiceFieldColumn()
     tags = columns.TagColumn(url_name="plugins:netbox_load_balancing_acl:lbroutingrule_list")
 
     class Meta(NetBoxTable.Meta):
@@ -29,6 +30,8 @@ class LBRoutingRuleTable(NetBoxTable):
             "header_value",
             "redirect_rule",
             "set_path",
+            "path_scope",
+            "exclude_paths",
             "return_status",
             "return_content_type",
             "tags",

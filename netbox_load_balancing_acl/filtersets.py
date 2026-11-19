@@ -4,7 +4,7 @@ from django.db.models import Q
 from netbox.filtersets import NetBoxModelFilterSet
 from netbox_load_balancing.models import HealthMonitor, Listener, Member, MemberAssignment, Pool
 from netbox_pki.models import PkiCertificateAuthority
-from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
+from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices, LBRoutingPathScopeChoices
 from .models import (
     LBAcl,
     LBBackendTuning,
@@ -27,6 +27,7 @@ class LBRoutingRuleFilterSet(NetBoxModelFilterSet):
     )
     action_type = django_filters.MultipleChoiceFilter(choices=LBRoutingActionTypeChoices)
     match_type = django_filters.MultipleChoiceFilter(choices=LBRoutingMatchTypeChoices)
+    path_scope = django_filters.MultipleChoiceFilter(choices=LBRoutingPathScopeChoices)
 
     class Meta:
         model = LBRoutingRule

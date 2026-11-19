@@ -86,6 +86,9 @@ mount `pools`, 1-per-backend — NOT `VirtualIPPool`, which is the frontend VIP 
   - `negate` — invert the match.
   - `return_status` / `return_content_type` / `return_body` — the answer of an `http-request_return`
     action (`clean()`: a match, a content type, a body, status 100-599).
+  - `path_scope` (`root`/`all`, default `root`) / `exclude_paths` (ArrayField of path prefixes) — a
+    set-path's reach (`clean()`: `all` needs `%[path]` in `set_path`; excludes need `all`, start with `/`,
+    no whitespace, unique; other actions keep the defaults). Migration 0015.
   - `UniqueConstraint(listener, order)` — one rule per evaluation slot per listener.
 
 `listener` CASCADEs (drop the frontend, its ACLs go); `target_pool` is PROTECT (a referenced pool

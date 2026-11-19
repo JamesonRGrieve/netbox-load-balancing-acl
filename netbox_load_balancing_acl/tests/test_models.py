@@ -28,6 +28,7 @@ from netbox_load_balancing.models import (
 from netbox_load_balancing_acl.choices import (
     LBRoutingActionTypeChoices,
     LBRoutingMatchTypeChoices,
+    LBRoutingPathScopeChoices,
 )
 from netbox_load_balancing_acl.models import (
     CLOUDFLARE_ORIGIN_TIMEOUT_SECONDS,
@@ -213,6 +214,54 @@ class LBRoutingRuleModelTest(TestCase):
         r.clean()
         r.save()
         self.assertIn("return 200 if host mta-sts.example.com", str(r))
+
+    def _set_path_rule(self, **kw):
+        return LBRoutingRule(
+            listener=self.listener, action_type=LBRoutingActionTypeChoices.SET_PATH_REQUEST, order=16,
+            match_type="host", pattern="git.example.com", **kw,
+        )
+
+    def test_set_path_defaults_to_root_scope(self):
+        r = self._set_path_rule(set_path="/home")
+        r.clean()
+        r.save()
+        r.refresh_from_db()
+        self.assertEqual((r.path_scope, r.exclude_paths), (LBRoutingPathScopeChoices.ROOT, []))
+        self.assertEqual(str(r), f"{self.listener}: set-path /home if host git.example.com")
+
+    def test_set_path_all_scope_with_excludes(self):
+        r = self._set_path_rule(
+            set_path="/Org%[path]", path_scope=LBRoutingPathScopeChoices.ALL,
+            exclude_paths=["/Org", "/api", "/assets", "/user"],
+        )
+        r.clean()
+        r.save()
+        r.refresh_from_db()
+        self.assertEqual(r.exclude_paths, ["/Org", "/api", "/assets", "/user"])
+        self.assertTrue(str(r).endswith("(all paths)"))
+
+    def test_clean_all_scope_requires_path_fmt(self):
+        with self.assertRaises(ValidationError):
+            self._set_path_rule(set_path="/Org", path_scope=LBRoutingPathScopeChoices.ALL).clean()
+
+    def test_clean_excludes_require_all_scope(self):
+        with self.assertRaises(ValidationError):
+            self._set_path_rule(set_path="/home", exclude_paths=["/api"]).clean()
+
+    def test_clean_rejects_bad_exclude_entries(self):
+        for bad in (["api"], ["/a b"], ["/a\tb"], ["/api", "/api"]):
+            with self.subTest(bad=bad), self.assertRaises(ValidationError):
+                self._set_path_rule(
+                    set_path="/Org%[path]", path_scope=LBRoutingPathScopeChoices.ALL, exclude_paths=bad
+                ).clean()
+
+    def test_clean_scope_fields_only_on_set_path(self):
+        for kw in ({"path_scope": LBRoutingPathScopeChoices.ALL}, {"exclude_paths": ["/api"]}):
+            r = LBRoutingRule(
+                listener=self.listener, match_type="host", pattern="x.example", target_pool=self.pool, order=17, **kw
+            )
+            with self.subTest(kw=kw), self.assertRaises(ValidationError):
+                r.clean()
 
     def test_clean_set_header_requires_name(self):
         r = LBRoutingRule(

@@ -12,7 +12,7 @@ from netbox_load_balancing.models import (
     MemberAssignment,
     Pool,
 )
-from netbox_load_balancing_acl.choices import LBRoutingMatchTypeChoices
+from netbox_load_balancing_acl.choices import LBRoutingMatchTypeChoices, LBRoutingPathScopeChoices
 from netbox_load_balancing_acl.filtersets import (
     LBFrontendTuningFilterSet,
     LBMemberHAFilterSet,
@@ -90,6 +90,16 @@ class LBRoutingRuleFilterSetTest(TestCase):
     def test_search_pattern_and_listener(self):
         self.assertEqual(LBRoutingRuleFilterSet({"q": "zephyrex"}, self.queryset).qs.count(), 2)
         self.assertEqual(LBRoutingRuleFilterSet({"q": "fe2"}, self.queryset).qs.count(), 1)
+
+    def test_path_scope(self):
+        LBRoutingRule.objects.create(
+            listener=self.l2, action_type="http-request_set-path", match_type=LBRoutingMatchTypeChoices.HOST,
+            pattern="git.org.example", set_path="/Org%[path]", path_scope=LBRoutingPathScopeChoices.ALL,
+            exclude_paths=["/Org"], order=30,
+        )
+        qs = LBRoutingRuleFilterSet({"path_scope": [LBRoutingPathScopeChoices.ALL]}, self.queryset).qs
+        self.assertEqual(list(qs.values_list("pattern", flat=True)), ["git.org.example"])
+        self.assertEqual(LBRoutingRuleFilterSet({"path_scope": [LBRoutingPathScopeChoices.ROOT]}, self.queryset).qs.count(), 3)
 
 
 class LBMemberHAFilterSetTest(TestCase):

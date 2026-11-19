@@ -13,7 +13,9 @@ from django.db import models
 from django.urls import reverse
 from netbox.models import NetBoxModel
 
-from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices
+from django.contrib.postgres.fields import ArrayField
+
+from .choices import LBRoutingActionTypeChoices, LBRoutingMatchTypeChoices, LBRoutingPathScopeChoices
 
 # Cloudflare's proxy read timeout is fixed (100 s, non-Enterprise). Every edge request timeout
 # defaults to 1 s past it and may not be set at or below it, so Cloudflare is always the party
@@ -95,6 +97,18 @@ class LBRoutingRule(NetBoxModel):
         "Transparently rewrites the URI path (no browser redirect); pair with a match "
         "(match_type/pattern) so only the intended host is rewritten.",
     )
+    path_scope = models.CharField(
+        max_length=8,
+        choices=LBRoutingPathScopeChoices,
+        default=LBRoutingPathScopeChoices.ROOT,
+        help_text="Which paths a set-path action rewrites: root (only /) or all (set_path must carry %[path]).",
+    )
+    exclude_paths = ArrayField(
+        models.CharField(max_length=128),
+        default=list,
+        blank=True,
+        help_text="Path prefixes an all-paths set-path leaves untouched (HAProxy !path_beg), e.g. /api, /assets.",
+    )
 
     # ── http-request return: the edge answers itself (status, content type, body) ──
     return_status = models.PositiveSmallIntegerField(
@@ -126,13 +140,18 @@ class LBRoutingRule(NetBoxModel):
         if self.action_type == LBRoutingActionTypeChoices.REDIRECT:
             return f"{self.listener}: redirect {self.redirect_rule}"
         if self.action_type == LBRoutingActionTypeChoices.SET_PATH_REQUEST:
-            return f"{self.listener}: set-path {self.set_path} if {self.match_type} {self.pattern}"
+            scope = " (all paths)" if self.path_scope == LBRoutingPathScopeChoices.ALL else ""
+            return f"{self.listener}: set-path {self.set_path} if {self.match_type} {self.pattern}{scope}"
         if self.action_type == LBRoutingActionTypeChoices.RETURN_REQUEST:
             return f"{self.listener}: return {self.return_status} if {self.match_type} {self.pattern}"
         return f"{self.listener}: {self.action_type} {self.header_name}={self.header_value}"
 
     def clean(self):
         super().clean()
+        if self.action_type != LBRoutingActionTypeChoices.SET_PATH_REQUEST and (
+            self.path_scope != LBRoutingPathScopeChoices.ROOT or self.exclude_paths
+        ):
+            raise ValidationError({"path_scope": "Only a set-path action scopes or excludes paths."})
         if self.action_type == LBRoutingActionTypeChoices.USE_BACKEND:
             if not self.target_pool_id:
                 raise ValidationError({"target_pool": "Required for a use_backend action."})
@@ -150,6 +169,7 @@ class LBRoutingRule(NetBoxModel):
                 raise ValidationError({"set_path": "Required for a set-path action."})
             if not self.match_type:
                 raise ValidationError({"match_type": "Required for a set-path action (scope the rewrite to a host/path)."})
+            self._clean_path_scope()
         elif self.action_type == LBRoutingActionTypeChoices.RETURN_REQUEST:
             if not self.match_type:
                 raise ValidationError({"match_type": "Required for a return action (scope the answer to a host/path)."})
@@ -160,6 +180,17 @@ class LBRoutingRule(NetBoxModel):
         else:  # set-header request/response
             if not self.header_name:
                 raise ValidationError({"header_name": "Required for a set-header action."})
+
+    def _clean_path_scope(self):
+        if self.path_scope == LBRoutingPathScopeChoices.ALL and "%[path]" not in self.set_path:
+            raise ValidationError({"set_path": "An all-paths rewrite must carry %[path], or every URL collapses to one page."})
+        if self.exclude_paths and self.path_scope != LBRoutingPathScopeChoices.ALL:
+            raise ValidationError({"exclude_paths": "Only a path_scope=all rewrite excludes paths."})
+        # HAProxy path_beg values are space-separated: whitespace inside an entry would split it silently.
+        if any(not p.startswith("/") or any(c.isspace() for c in p) for p in self.exclude_paths):
+            raise ValidationError({"exclude_paths": "Each entry is a path prefix starting with / and holding no whitespace."})
+        if len(set(self.exclude_paths)) != len(self.exclude_paths):
+            raise ValidationError({"exclude_paths": "Entries must be unique."})
 
     def get_absolute_url(self):
         return reverse("plugins:netbox_load_balancing_acl:lbroutingrule", args=[self.pk])

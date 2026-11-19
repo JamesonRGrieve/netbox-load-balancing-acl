@@ -55,6 +55,48 @@ class _CRUD(
         super().setUpClass()
 
 
+class LBRoutingRuleSetPathAPITest(_CRUD):
+    """A root-scope set-path row made before 0015 (an OMG stub) must read back unchanged apart from the two new
+    keys at their defaults; an all-scope row round-trips both fields."""
+
+    model = LBRoutingRule
+    brief_fields = ["action_type", "display", "id", "listener", "order", "url"]
+    bulk_update_data = {"set_path": "/moved"}
+
+    @classmethod
+    def setUpTestData(cls):
+        existing = [_listener(f"sp{i}") for i in range(3)]
+        LBRoutingRule.objects.bulk_create(
+            [
+                LBRoutingRule(
+                    listener=lst, action_type="http-request_set-path", match_type="host",
+                    pattern=f"stub{i}.example", set_path=f"/stub-{i}-home",
+                )
+                for i, lst in enumerate(existing)
+            ]
+        )
+        fresh = [_listener(f"spn{i}") for i in range(3)]
+        cls.create_data = [
+            {"listener": fresh[0].pk, "action_type": "http-request_set-path", "match_type": "host",
+             "pattern": "a.example", "set_path": "/a-home", "order": 10},
+            {"listener": fresh[1].pk, "action_type": "http-request_set-path", "match_type": "host",
+             "pattern": "git.org.example", "set_path": "/Org%[path]", "path_scope": "all",
+             "exclude_paths": ["/Org", "/api", "/assets"], "order": 20},
+            {"listener": fresh[2].pk, "action_type": "http-request_set-path", "match_type": "host",
+             "pattern": "git.two.example", "set_path": "/Two%[path]", "path_scope": "all", "order": 30},
+        ]
+
+    def test_pre_0015_root_row_reads_with_defaults(self):
+        self.add_permissions("netbox_load_balancing_acl.view_lbroutingrule")
+        stub = LBRoutingRule.objects.get(pattern="stub0.example")
+        data = self.client.get(self._get_detail_url(stub), **self.header).json()
+        self.assertEqual(
+            {k: data[k] for k in ("action_type", "match_type", "pattern", "set_path", "path_scope", "exclude_paths")},
+            {"action_type": "http-request_set-path", "match_type": "host",
+             "pattern": "stub0.example", "set_path": "/stub-0-home", "path_scope": "root", "exclude_paths": []},
+        )
+
+
 class LBRoutingRuleAPITest(_CRUD):
     model = LBRoutingRule
     brief_fields = ["action_type", "display", "id", "listener", "order", "url"]

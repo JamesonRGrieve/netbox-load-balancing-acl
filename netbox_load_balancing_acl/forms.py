@@ -23,7 +23,7 @@ class LBRoutingRuleForm(NetBoxModelForm):
         FieldSet("target_pool", name="Backend (use_backend)"),
         FieldSet("header_name", "header_value", name="Header (set-header)"),
         FieldSet("redirect_rule", name="Redirect"),
-        FieldSet("set_path", name="Rewrite (set-path)"),
+        FieldSet("set_path", "path_scope", "exclude_paths", name="Rewrite (set-path)"),
         FieldSet("return_status", "return_content_type", "return_body", name="Answer (http-request return)"),
     )
 
@@ -43,6 +43,8 @@ class LBRoutingRuleForm(NetBoxModelForm):
             "header_value",
             "redirect_rule",
             "set_path",
+            "path_scope",
+            "exclude_paths",
             "return_status",
             "return_content_type",
             "return_body",
