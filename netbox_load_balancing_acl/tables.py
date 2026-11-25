@@ -34,6 +34,7 @@ class LBRoutingRuleTable(NetBoxTable):
             "exclude_paths",
             "return_status",
             "return_content_type",
+            "match_path",
             "tags",
             "created",
             "last_updated",

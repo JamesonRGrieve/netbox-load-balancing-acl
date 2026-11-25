@@ -215,6 +215,34 @@ class LBRoutingRuleModelTest(TestCase):
         r.save()
         self.assertIn("return 200 if host mta-sts.example.com", str(r))
 
+    def _return_rule(self, **kw):
+        return LBRoutingRule(
+            listener=self.listener, action_type=LBRoutingActionTypeChoices.RETURN_REQUEST, order=17,
+            match_type="host", pattern="dev.example.com", return_content_type="text/plain",
+            return_body="User-agent: *\nDisallow: /\n", **kw,
+        )
+
+    def test_return_match_path_round_trips(self):
+        r = self._return_rule(match_path="/robots.txt")
+        r.clean()
+        r.save()
+        r.refresh_from_db()
+        self.assertEqual(r.match_path, "/robots.txt")
+        self.assertEqual(str(r), f"{self.listener}: return 200 if host dev.example.com path /robots.txt")
+
+    def test_return_without_match_path_keeps_host_only(self):
+        r = self._return_rule()
+        r.clean()
+        self.assertEqual((r.match_path, str(r)), ("", f"{self.listener}: return 200 if host dev.example.com"))
+
+    def test_clean_match_path_must_be_absolute(self):
+        with self.assertRaises(ValidationError):
+            self._return_rule(match_path="robots.txt").clean()
+
+    def test_clean_match_path_only_on_return(self):
+        with self.assertRaises(ValidationError):
+            self._set_path_rule(set_path="/home", match_path="/robots.txt").clean()
+
     def _set_path_rule(self, **kw):
         return LBRoutingRule(
             listener=self.listener, action_type=LBRoutingActionTypeChoices.SET_PATH_REQUEST, order=16,

@@ -79,6 +79,7 @@ class LBRoutingRuleSerializer(NetBoxModelSerializer):
             "return_status",
             "return_content_type",
             "return_body",
+            "match_path",
             "tags",
             "custom_fields",
             "created",

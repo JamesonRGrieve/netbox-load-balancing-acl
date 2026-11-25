@@ -122,6 +122,12 @@ class LBRoutingRule(NetBoxModel):
         help_text="Body of an http-request return action (e.g. an MTA-STS policy). Rendered as one quoted "
         "HAProxy string: newlines become \\n, so keep it small.",
     )
+    match_path = models.CharField(
+        max_length=128,
+        blank=True,
+        help_text='Path prefix a return action also requires (HAProxy path_beg, ANDed with the match), '
+        'e.g. "/robots.txt" so a dev host answers only that path at the edge.',
+    )
 
     class Meta:
         ordering = ["listener", "order"]
@@ -143,7 +149,8 @@ class LBRoutingRule(NetBoxModel):
             scope = " (all paths)" if self.path_scope == LBRoutingPathScopeChoices.ALL else ""
             return f"{self.listener}: set-path {self.set_path} if {self.match_type} {self.pattern}{scope}"
         if self.action_type == LBRoutingActionTypeChoices.RETURN_REQUEST:
-            return f"{self.listener}: return {self.return_status} if {self.match_type} {self.pattern}"
+            path = f" path {self.match_path}" if self.match_path else ""
+            return f"{self.listener}: return {self.return_status} if {self.match_type} {self.pattern}{path}"
         return f"{self.listener}: {self.action_type} {self.header_name}={self.header_value}"
 
     def clean(self):
@@ -152,6 +159,10 @@ class LBRoutingRule(NetBoxModel):
             self.path_scope != LBRoutingPathScopeChoices.ROOT or self.exclude_paths
         ):
             raise ValidationError({"path_scope": "Only a set-path action scopes or excludes paths."})
+        if self.match_path and self.action_type != LBRoutingActionTypeChoices.RETURN_REQUEST:
+            raise ValidationError({"match_path": "Only a return action matches a path."})
+        if self.match_path and not self.match_path.startswith("/"):
+            raise ValidationError({"match_path": 'A path starts with "/".'})
         if self.action_type == LBRoutingActionTypeChoices.USE_BACKEND:
             if not self.target_pool_id:
                 raise ValidationError({"target_pool": "Required for a use_backend action."})
