@@ -125,8 +125,9 @@ class LBRoutingRule(NetBoxModel):
     match_path = models.CharField(
         max_length=128,
         blank=True,
-        help_text='Path prefix a return action also requires (HAProxy path_beg, ANDed with the match), '
-        'e.g. "/robots.txt" so a dev host answers only that path at the edge.',
+        help_text='Path prefix a return or use_backend action also requires (HAProxy path_beg, ANDed with the '
+        'match), e.g. "/robots.txt" so a dev host answers only that path at the edge, or "/linphone/" so one '
+        'host routes each path to its own pool.',
     )
 
     class Meta:
@@ -140,7 +141,8 @@ class LBRoutingRule(NetBoxModel):
 
     def __str__(self):
         if self.action_type == LBRoutingActionTypeChoices.USE_BACKEND:
-            return f"{self.listener}: {self.match_type} {self.pattern} → {self.target_pool}"
+            path = f" path {self.match_path}" if self.match_path else ""
+            return f"{self.listener}: {self.match_type} {self.pattern}{path} → {self.target_pool}"
         if self.action_type == LBRoutingActionTypeChoices.DEFAULT_BACKEND:
             return f"{self.listener}: default_backend → {self.target_pool}"
         if self.action_type == LBRoutingActionTypeChoices.REDIRECT:
@@ -159,8 +161,10 @@ class LBRoutingRule(NetBoxModel):
             self.path_scope != LBRoutingPathScopeChoices.ROOT or self.exclude_paths
         ):
             raise ValidationError({"path_scope": "Only a set-path action scopes or excludes paths."})
-        if self.match_path and self.action_type != LBRoutingActionTypeChoices.RETURN_REQUEST:
-            raise ValidationError({"match_path": "Only a return action matches a path."})
+        if self.match_path and self.action_type not in (
+            LBRoutingActionTypeChoices.RETURN_REQUEST, LBRoutingActionTypeChoices.USE_BACKEND
+        ):
+            raise ValidationError({"match_path": "Only a return or use_backend action matches a path."})
         if self.match_path and not self.match_path.startswith("/"):
             raise ValidationError({"match_path": 'A path starts with "/".'})
         if self.action_type == LBRoutingActionTypeChoices.USE_BACKEND:

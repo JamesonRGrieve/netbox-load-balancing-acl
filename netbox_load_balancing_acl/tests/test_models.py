@@ -243,6 +243,24 @@ class LBRoutingRuleModelTest(TestCase):
         with self.assertRaises(ValidationError):
             self._set_path_rule(set_path="/home", match_path="/robots.txt").clean()
 
+    def test_use_backend_match_path_round_trips(self):
+        r = LBRoutingRule(
+            listener=self.listener, action_type=LBRoutingActionTypeChoices.USE_BACKEND, order=18,
+            match_type="host", pattern="prov.example.com", target_pool=self.pool, match_path="/linphone/",
+        )
+        r.clean()
+        r.save()
+        r.refresh_from_db()
+        self.assertEqual(r.match_path, "/linphone/")
+        self.assertEqual(str(r), f"{self.listener}: host prov.example.com path /linphone/ → {self.pool}")
+
+    def test_clean_use_backend_match_path_must_be_absolute(self):
+        with self.assertRaises(ValidationError):
+            LBRoutingRule(
+                listener=self.listener, action_type=LBRoutingActionTypeChoices.USE_BACKEND, order=19,
+                match_type="host", pattern="prov.example.com", target_pool=self.pool, match_path="linphone/",
+            ).clean()
+
     def _set_path_rule(self, **kw):
         return LBRoutingRule(
             listener=self.listener, action_type=LBRoutingActionTypeChoices.SET_PATH_REQUEST, order=16,
